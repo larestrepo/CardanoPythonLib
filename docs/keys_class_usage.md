@@ -89,6 +89,8 @@ for name in wallet_names:
     hash = key_info['hash_verification_key']
     keyHashes.append(hash)
 
+# building multisig script
+name = 'MyFirstMultiSig'
 node = base.Node()
 type = "atLeast"
 required = 2
