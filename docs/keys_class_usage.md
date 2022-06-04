@@ -78,9 +78,9 @@ The steps are:
     6. Unlock funds from the script address
 
 ```python
-from src.cardano.base import Keys
+from cardanopythonlib import base
 
-key= Keys()
+keys = base.Keys()
 wallet_names = ['wallet01', 'wallet02', 'wallet03']
 
 keyHashes = []
@@ -89,12 +89,12 @@ for name in wallet_names:
     hash = key_info['hash_verification_key']
     keyHashes.append(hash)
 
+node = base.Node()
 type = "atLeast"
 required = 2
-multisig_script = key.create_multisig_script(name, type, required, keyHashes)
+multisig_script = node.create_multisig_script(name, type, required, keyHashes)
 
-script_address = key.create_address_script(name)
-print(script_address)
+keys.create_address_script(name)
 ```
 
 > In this example we generate 3 wallets and their hashes which are passed to create the script with the following conditions: At least 2o3 of the wallets should witness the transaction to unlock the funds from the script address.

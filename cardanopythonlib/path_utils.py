@@ -9,6 +9,7 @@ import shutil
 import logging
 from pathlib import Path
 from typing import Union
+import json
 
 
 def get_root_path() -> str:
@@ -195,3 +196,14 @@ def save_file(target_path: str, file_name: str, content: str) -> None:
 def remove_file(path: str, name: str) -> None:
     if os.path.exists(path+name):
         os.remove(path+name)
+
+def save_metadata(path, name, metadata):
+    create_folder(path)
+    if metadata == {}:
+        metadata_json_file = ''
+    else:
+        with open(path + '/' + name, 'w') as file:
+            json.dump(metadata, file, indent=4, ensure_ascii=False)
+        metadata_json_file = path + '/' + name
+
+    return metadata_json_file

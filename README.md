@@ -41,7 +41,9 @@ List all virtual environments
 
     git clone https://github.com/larestrepo/CardanoPythonLib.git
 
-4. Install requirements
+4. Install requirements (For the time being optional)
+
+If you look at the requirements, in this release, it only contains some support dependencies for shaping and styling python code. Basically no dependencies as of now.
 
 Make sure to have active your virtual environment
 

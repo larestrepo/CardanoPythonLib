@@ -14,7 +14,7 @@ from operator import itemgetter
 
 # Module Imports
 from cardanopythonlib.data_utils import load_configs, parse_inputs
-from cardanopythonlib.path_utils import create_folder, save_file, remove_file
+from cardanopythonlib.path_utils import create_folder, save_file, remove_file, save_metadata
 
 WORKING_DIR = os.getcwd()
 CARDANO_CONFIGS = f'{WORKING_DIR}/config/cardano_config.json'
@@ -113,16 +113,16 @@ class Starter:
         output = subprocess.Popen(command_string, stdout=subprocess.PIPE)
         return output
 
-    @staticmethod
-    def save_metadata(path, name, metadata):
-        if metadata == {}:
-            metadata_json_file = ''
-        else:
-            with open(path + '/' + name, 'w') as file:
-                json.dump(metadata, file, indent=4, ensure_ascii=False)
-            metadata_json_file = path + '/' + name
+    # @staticmethod
+    # def save_metadata(path, name, metadata):
+    #     if metadata == {}:
+    #         metadata_json_file = ''
+    #     else:
+    #         with open(path + '/' + name, 'w') as file:
+    #             json.dump(metadata, file, indent=4, ensure_ascii=False)
+    #         metadata_json_file = path + '/' + name
 
-        return metadata_json_file
+    #     return metadata_json_file
 
 
 class Node(Starter):
@@ -454,8 +454,7 @@ class Node(Starter):
                 return None
             else:
                 multisig_script['required'] = required
-
-        script_file_path = self.save_metadata(keys_file_path, script_name + '.script', multisig_script)
+        script_file_path = save_metadata(keys_file_path, script_name + '.script', multisig_script)
         print("Script stored in '%s'\n '%s'" % (script_file_path, multisig_script))
         return multisig_script
 
@@ -617,7 +616,7 @@ class Node(Starter):
                 i = i + index
                 metadata_array = []
                 if metadata is not None:
-                    metadata_json_file = self.save_metadata(
+                    metadata_json_file = save_metadata(
                         self.TRANSACTION_PATH_FILE, 'tx_metadata.json', metadata)
                     metadata_array.append('--metadata-json-file')
                     metadata_array.append(metadata_json_file)
@@ -1202,9 +1201,8 @@ class Keys(Starter):
             '--out-file',
             keys_file_path + '/' + script_name + '.script.addr'
         ]
-        rawResult = self.execute_command(command_string, None)
+        self.execute_command(command_string, None)
         # output = utils.cat_files(
         #     keys_file_path, '/' + script_name + '.script.addr'
         #     )
-        print("Script address'%s' stored in '%s'" % (rawResult, keys_file_path))
-        return rawResult
+        print("Script address stored in '%s'" % (keys_file_path))
