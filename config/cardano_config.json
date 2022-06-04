@@ -1,0 +1,11 @@
+{    
+    "node":{
+        "KEYS_FILE_PATH": "./.priv/wallets",
+        "TRANSACTION_PATH_FILE": "./.priv/transactions",
+        "CARDANO_NETWORK": "testnet",
+        "CARDANO_NETWORK_MAGIC": 1097911063,
+        "CARDANO_CLI_PATH": "cardano-cli",
+        "URL": "http://localhost:8090/v2/wallets/"
+    }
+
+}

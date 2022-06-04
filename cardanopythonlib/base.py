@@ -1,8 +1,6 @@
 """
 This submodule defines the main classes representing the following Cardano
-objects: Node and Wallet. In addition to an extesion class IotExtensions that
-inherits and extends specific applications for the interaction with AWS IoT
-submodule located at src/iot/
+objects: Node and Wallet.
 """
 
 # General Imports
@@ -15,17 +13,19 @@ from itertools import groupby
 from operator import itemgetter
 
 # Module Imports
-from data_utils import load_configs, parse_inputs
-from path_utils import create_folder, save_file, remove_file
+from cardanopythonlib.data_utils import load_configs, parse_inputs
+from cardanopythonlib.path_utils import create_folder, save_file, remove_file
 
 WORKING_DIR = os.getcwd()
 CARDANO_CONFIGS = f'{WORKING_DIR}/config/cardano_config.json'
 
-class Cardano:
+
+class Starter:
 
     """
-    Class for Node object. Contains all the basic functions for interactions
-    with cardano-cli excluding those competent to Wallet.
+    Class that initializes the main env variables and paths and it contains
+    some generic functions. Here we can place new functions that are inherited to
+    the main classes. 
 
     Attributes
     ----------
@@ -125,7 +125,7 @@ class Cardano:
         return metadata_json_file
 
 
-class Node(Cardano):
+class Node(Starter):
     """
     Class using primarly Cardano CLI commands
     """
@@ -705,7 +705,7 @@ class Node(Cardano):
 
         return(rawResult)
 
-class Keys(Cardano):
+class Keys(Starter):
     def __init__(self, config_path=CARDANO_CONFIGS):
         super().__init__(config_path=config_path)
         self.path = self.KEYS_FILE_PATH

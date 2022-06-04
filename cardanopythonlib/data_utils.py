@@ -4,7 +4,7 @@ from typing import Optional, Union
 import json
 
 # Module imports
-from path_utils import validate_path
+from . import path_utils
 
 
 def check_nested_dicts(vals: dict):
@@ -109,7 +109,7 @@ def load_configs(vals: Union[str, dict], full_flat: bool) -> Optional[dict]:
     """
     if isinstance(vals, str):
         try:
-            with open(validate_path(vals, False)) as file:
+            with open(path_utils.validate_path(vals, False)) as file:
                 output = json.load(file)
                 if check_nested_dicts(output):
                     output = flatten_dict(output, full_flat)

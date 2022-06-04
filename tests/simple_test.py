@@ -1,1 +1,7 @@
-from .context import cardanopythonlib
+# from .context import cardanopythonlib
+
+import cardanopythonlib.base as base
+
+keys = base.Keys()
+
+
