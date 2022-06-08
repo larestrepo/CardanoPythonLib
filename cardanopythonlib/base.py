@@ -334,7 +334,7 @@ class Node(Starter):
                         if deplete:
                             TxHash.append('--tx-in')
                             TxHash.append([utxo['hash'] + '#' + utxo['id']])
-                            amount_equal = int(amount['amount'])
+                            amount_equal += int(amount['amount'])
                             utxo_found = True
                             break
                         if int(amount['amount']) == quantity:
