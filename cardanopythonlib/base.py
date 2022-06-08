@@ -20,7 +20,7 @@ WORKING_DIR = os.getcwd()
 CARDANO_CONFIGS = f'{WORKING_DIR}/config/cardano_config.json'
 
 
-class Starter:
+class Starter():
 
     """
     Class that initializes the main env variables and paths and it contains
@@ -418,9 +418,9 @@ class Node(Starter):
             '--out-file', path_skey + '.witness'
         ]
         if self.CARDANO_NETWORK == 'testnet':
-            command_string, index = self.insert_command(3,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
+            command_string, index = self.insert_command(10,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
         else:
-            command_string, index = self.insert_command(3,1,command_string,['--mainnet'])
+            command_string, index = self.insert_command(10,1,command_string,['--mainnet'])
         self.execute_command(command_string, None)
 
         rawResult = self.execute_command(command_string, None)
@@ -938,13 +938,12 @@ class Keys(Starter):
             self.CARDANO_CLI_PATH, 'address', 'build',
             '--payment-verification-key-file',
             self.path + '/' + name + '/' + name + '.payment.vkey',
-            str(self.cardano_network_magic), '--out-file',
-            self.path + '/' + name + '/' + name + '.payment.addr'
+            '--out-file', self.path + '/' + name + '/' + name + '.payment.addr'
         ]
         if self.CARDANO_NETWORK == 'testnet':
-            command_string, index = self.insert_command(6,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
+            command_string, index = self.insert_command(5,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
         else:
-            command_string, index = self.insert_command(6,1,command_string,['--mainnet'])
+            command_string, index = self.insert_command(5,1,command_string,['--mainnet'])
         self.execute_command(command_string, None)
 
         output = self.cat_files(
@@ -1023,9 +1022,9 @@ class Keys(Starter):
             self.path + '/' + name + '/' + name + '.stake.addr'
         ]
         if self.CARDANO_NETWORK == 'testnet':
-            command_string, index = self.insert_command(6,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
+            command_string, index = self.insert_command(5,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
         else:
-            command_string, index = self.insert_command(6,1,command_string,['--mainnet'])
+            command_string, index = self.insert_command(5,1,command_string,['--mainnet'])
         self.execute_command(command_string, None)
         self.execute_command(command_string, None)
         output = self.cat_files(
@@ -1062,9 +1061,9 @@ class Keys(Starter):
             self.path + '/' + name + '/' + name + '.base.addr'
         ]
         if self.CARDANO_NETWORK == 'testnet':
-            command_string, index = self.insert_command(8,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
+            command_string, index = self.insert_command(7,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
         else:
-            command_string, index = self.insert_command(8,1,command_string,['--mainnet'])
+            command_string, index = self.insert_command(7,1,command_string,['--mainnet'])
         self.execute_command(command_string, None)
         self.execute_command(command_string, None)
         output = self.cat_files(
