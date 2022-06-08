@@ -6,15 +6,15 @@ import uuid
 
 from cardanopythonlib import base
 
-def assertIsfile(path):
-    file_exists = os.path.exists(path)
-    return file_exists
-
 class TestLibrary (unittest.TestCase):
     def setUp(self):
         self.WORKING_DIR = os.getcwd()
         self.CARDANO_CONFIGS = f'{self.WORKING_DIR}/config/cardano_config.json'
         self.starter = base.Starter(self.CARDANO_CONFIGS)
+
+    #####################################
+    # This is the start of the section to test Starter class and Keys class
+    #####################################
     def test_cardano_config_json_existence(self):
         file_exists = os.path.exists(self.CARDANO_CONFIGS)
         self.assertTrue(file_exists, f"config file does not exists in {self.CARDANO_CONFIGS}")
@@ -80,94 +80,6 @@ class TestLibrary (unittest.TestCase):
         self.assertTrue(key['base_addr_path'].startswith('addr'), "Problem with base_addr_path")
         self.assertEqual(len(key['hash_verification_key']), 56, "Problem with hash_verification_key")
         remove_folder("./.priv/wallets/" + wallet_name)
-    
-
-
 
 if __name__ == '__main__':
     unittest.main()
-
-# def test_create_wallet(self):
-#     print(addresses[0]['id'])
-#     if test_id==3: # new method
-#         def test_delete_wallet(self):
-#             list_wallets=wallet.list_wallets()
-#             print(list_wallets)
-#             for k, v in list_wallets.items():
-#                 if k==[id]:
-#                     wallet.delete_wallet(k)
-#             # list_wallets=wallet.list_wallets()
-#             # print(list_wallets)
-#             # for k, v in list_wallets.items():
-#             #     if k==[id]:
-#             #         wallet.delete_wallet(k)
-#             id = '8b94dab0fa6c5ff737b19d9dba7faca095ce1480'
-#             response = wallet.delete_wallet(id)
-#             print(response)
-#     if test_id==4: # old method
-#         def test_get_balance(self):
-#             wallet01 = 'acdc'
-#             token = 'ADA'
-#             actual_balance01 = lb.get_balance(wallet01,token)
-#             print(actual_balance01)
-
-
-#     if test_id==5: #new method
-#         def test_generate_nmemonic(self):
-#             wallet.generate_mnemonic(24)
-# def test_generate_wallet_from_nmemonic(self):
-
-#     if test_id==7:
-#         def test_minting(self):
-#             wallet_name = 'Mint_wallet'
-#             utils.create_minting_policy(wallet_name)
-#             params= {
-#                 "seq": 1,
-#                 "cmd_id": "mint_asset",
-#                 "message": {
-#                     "tx_info": {
-#                     "mint": {
-#                         "id": "6c8eadf91ae46e93d953657ac968fbd4b8f0afed",
-#                         "metadata": {},
-#                         "address": "addr_test1qpjltzup7mjfk9vhrj4ltv6sduwv427nmjqf623jje7zt5qytthp9vmrx4y8t4kwk73jlxxsqwu75fd4dx5k5uzl54rsh4wu29",
-#                         "tokens": [
-#                         {
-#                             "name": "testtokens2",
-#                             "amount": 20,
-#                             "policyID": ""
-#                         }
-#                         ]
-#                     }
-#                     }
-#                 }
-#                 }
-
-#     if test_id==8:
-#         def test_get_addresses(self):
-#             print('executing get address')
-#             id='af807b9bf120667b5fadd9e7bdee4a6dab71623f'
-#             addresses = wallet.get_addresses(id)
-#             print(addresses)
-
-#     if test_id==9:
-
-#         def test_get_balance_new(self):
-#             address='addr_test1qpjltzup7mjfk9vhrj4ltv6sduwv427nmjqf623jje7zt5qytthp9vmrx4y8t4kwk73jlxxsqwu75fd4dx5k5uzl54rsh4wu29'
-#             balance = node.get_balance(address)
-#             print(balance)
-
-        # def test_full_cycle(self):
-        #     """ 1. Create wallet
-        #     {
-        #         "seq": 1,
-        #         "cmd_id": "generate_new_mnemonic_phrase",
-        #         "message": { 
-        #                 "size": 24
-        #         }
-        #         }
-
-        #     """
-
-        #     # 1.a Create nmemonic
-        #     size = 24
-        #     mnemonic = wallet.generate_mnemonic(size)

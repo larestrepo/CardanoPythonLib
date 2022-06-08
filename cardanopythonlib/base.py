@@ -175,7 +175,6 @@ class Node(Starter):
         else:
             command_string, index = self.insert_command(3,1,command_string,['--mainnet'])
 
-        self.execute_command(command_string, None)
         rawResult = self.execute_command(command_string, None)
         if rawResult == '':
             print("Protocol parameters file stored in '%s'" % (protocol_file))
@@ -196,7 +195,6 @@ class Node(Starter):
             command_string, index = self.insert_command(3,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
         else:
             command_string, index = self.insert_command(3,1,command_string,['--mainnet'])
-        self.execute_command(command_string, None)
 
         rawResult = self.execute_command(command_string, None)
         rawResult = json.loads(rawResult)
@@ -221,7 +219,6 @@ class Node(Starter):
             command_string, index = self.insert_command(5,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
         else:
             command_string, index = self.insert_command(5,1,command_string,['--mainnet'])
-        self.execute_command(command_string, None)
 
         rawResult = self.execute_command(command_string, None)
 
@@ -326,7 +323,7 @@ class Node(Starter):
                         if deplete:
                             TxHash.append('--tx-in')
                             TxHash.append([utxo['hash'] + '#' + utxo['id']])
-                            amount_equal = int(amount['amount'])
+                            amount_equal += int(amount['amount'])
                             utxo_found = True
                             break
                         if int(amount['amount']) == quantity:
@@ -376,7 +373,7 @@ class Node(Starter):
         else:
             return {}, 0
 
-    def tx_min_fee(self, tx_in_count, tx_out_count):
+    def tx_min_fee(self, tx_in_count, tx_out_count): # Deprecated, use build_tx_components instead
         """Calculates the expected min fees .
         Args:
             tx_in_count: number of utxo in input
@@ -398,7 +395,6 @@ class Node(Starter):
             command_string, index = self.insert_command(11,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
         else:
             command_string, index = self.insert_command(11,1,command_string,['--mainnet'])
-        self.execute_command(command_string, None)
 
         rawResult = self.execute_command(command_string, None)
         rawResult = rawResult.split()
@@ -421,7 +417,6 @@ class Node(Starter):
             command_string, index = self.insert_command(10,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
         else:
             command_string, index = self.insert_command(10,1,command_string,['--mainnet'])
-        self.execute_command(command_string, None)
 
         rawResult = self.execute_command(command_string, None)
         if rawResult == '':
@@ -489,7 +484,6 @@ class Node(Starter):
             command_string, index = self.insert_command(7,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
         else:
             command_string, index = self.insert_command(7,1,command_string,['--mainnet'])
-        self.execute_command(command_string, None)
 
         rawResult = self.execute_command(command_string, None)
         if rawResult == '':
@@ -507,7 +501,6 @@ class Node(Starter):
             command_string, index = self.insert_command(5,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
         else:
             command_string, index = self.insert_command(5,1,command_string,['--mainnet'])
-        self.execute_command(command_string, None)
 
         rawResult = self.execute_command(command_string, None)
         print(rawResult)
@@ -639,7 +632,6 @@ class Node(Starter):
                     command_string, index = self.insert_command(3 + i,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
                 else:
                     command_string, index = self.insert_command(3 + i,1,command_string,['--mainnet'])
-                self.execute_command(command_string, None)
 
                 print(command_string)
 
@@ -1026,7 +1018,6 @@ class Keys(Starter):
         else:
             command_string, index = self.insert_command(5,1,command_string,['--mainnet'])
         self.execute_command(command_string, None)
-        self.execute_command(command_string, None)
         output = self.cat_files(
             self.path, '/' + name + '/' + name + '.stake.addr'
         )
@@ -1064,7 +1055,6 @@ class Keys(Starter):
             command_string, index = self.insert_command(7,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
         else:
             command_string, index = self.insert_command(7,1,command_string,['--mainnet'])
-        self.execute_command(command_string, None)
         self.execute_command(command_string, None)
         output = self.cat_files(
             self.path, '/' + name + '/' + name + '.base.addr'
@@ -1209,6 +1199,5 @@ class Keys(Starter):
             command_string, index = self.insert_command(5,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
         else:
             command_string, index = self.insert_command(5,1,command_string,['--mainnet'])
-        self.execute_command(command_string, None)
         self.execute_command(command_string, None)
         print("Script address stored in '%s'" % (keys_file_path))
