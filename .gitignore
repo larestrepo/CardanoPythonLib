@@ -71,7 +71,6 @@ venv.bak/
 .vscode
 
 #My files
-tests
 
 #Cardano
 .priv
