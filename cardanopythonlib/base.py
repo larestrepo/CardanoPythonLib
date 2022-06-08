@@ -20,7 +20,7 @@ WORKING_DIR = os.getcwd()
 CARDANO_CONFIGS = f'{WORKING_DIR}/config/cardano_config.json'
 
 
-class Starter:
+class Starter():
 
     """
     Class that initializes the main env variables and paths and it contains
@@ -113,17 +113,6 @@ class Starter:
         output = subprocess.Popen(command_string, stdout=subprocess.PIPE)
         return output
 
-    # @staticmethod
-    # def save_metadata(path, name, metadata):
-    #     if metadata == {}:
-    #         metadata_json_file = ''
-    #     else:
-    #         with open(path + '/' + name, 'w') as file:
-    #             json.dump(metadata, file, indent=4, ensure_ascii=False)
-    #         metadata_json_file = path + '/' + name
-
-    #     return metadata_json_file
-
 
 class Node(Starter):
     """
@@ -182,10 +171,11 @@ class Node(Starter):
             'query', 'protocol-parameters',
             '--out-file', protocol_file]
         if self.CARDANO_NETWORK == 'testnet':
-            command_string, index = self.insert_command(
-                3, 1, command_string, [
-                    '--testnet-magic', self.CARDANO_NETWORK_MAGIC])
+            command_string, index = self.insert_command(3,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
+        else:
+            command_string, index = self.insert_command(3,1,command_string,['--mainnet'])
 
+        self.execute_command(command_string, None)
         rawResult = self.execute_command(command_string, None)
         if rawResult == '':
             print("Protocol parameters file stored in '%s'" % (protocol_file))
@@ -203,9 +193,10 @@ class Node(Starter):
             self.CARDANO_CLI_PATH,
             'query', 'tip']
         if self.CARDANO_NETWORK == 'testnet':
-            command_string, index = self.insert_command(
-                3, 1, command_string, [
-                    '--testnet-magic', self.CARDANO_NETWORK_MAGIC])
+            command_string, index = self.insert_command(3,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
+        else:
+            command_string, index = self.insert_command(3,1,command_string,['--mainnet'])
+        self.execute_command(command_string, None)
 
         rawResult = self.execute_command(command_string, None)
         rawResult = json.loads(rawResult)
@@ -227,9 +218,10 @@ class Node(Starter):
             'query', 'utxo',
             '--address', address]
         if self.CARDANO_NETWORK == 'testnet':
-            command_string, index = self.insert_command(
-                5, 1, command_string, [
-                    '--testnet-magic', self.CARDANO_NETWORK_MAGIC])
+            command_string, index = self.insert_command(5,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
+        else:
+            command_string, index = self.insert_command(5,1,command_string,['--mainnet'])
+        self.execute_command(command_string, None)
 
         rawResult = self.execute_command(command_string, None)
 
@@ -403,9 +395,10 @@ class Node(Starter):
             '--protocol-params-file', self.TRANSACTION_PATH_FILE + \
             '/protocol.json']
         if self.CARDANO_NETWORK == 'testnet':
-            command_string, index = self.insert_command(
-                11, 1, command_string, [
-                    '--testnet-magic', self.CARDANO_NETWORK_MAGIC])
+            command_string, index = self.insert_command(11,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
+        else:
+            command_string, index = self.insert_command(11,1,command_string,['--mainnet'])
+        self.execute_command(command_string, None)
 
         rawResult = self.execute_command(command_string, None)
         rawResult = rawResult.split()
@@ -425,9 +418,10 @@ class Node(Starter):
             '--out-file', path_skey + '.witness'
         ]
         if self.CARDANO_NETWORK == 'testnet':
-            command_string, index = self.insert_command(
-                3, 1, command_string, [
-                    '--testnet-magic', self.CARDANO_NETWORK_MAGIC])
+            command_string, index = self.insert_command(10,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
+        else:
+            command_string, index = self.insert_command(10,1,command_string,['--mainnet'])
+        self.execute_command(command_string, None)
 
         rawResult = self.execute_command(command_string, None)
         if rawResult == '':
@@ -472,7 +466,7 @@ class Node(Starter):
             os.makedirs(keys_file_path)
         # Generate policyID from the policy script file
         command_string = [
-            'cardano-cli', 'transaction', 'policyid', '--script-file',
+            self.CARDANO_CLI_PATH, 'transaction', 'policyid', '--script-file',
             keys_file_path + '/' + script_name + '.script'
         ]
         rawResult = self.execute_command(command_string, None)
@@ -492,9 +486,10 @@ class Node(Starter):
             + '.payment.skey', '--out-file', self.TRANSACTION_PATH_FILE + '/tx.signed']
         i = 0
         if self.CARDANO_NETWORK == 'testnet':
-            command_string, index = self.insert_command(
-                7 + i, 1, command_string, ['--testnet-magic',
-                                           self.CARDANO_NETWORK_MAGIC])
+            command_string, index = self.insert_command(7,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
+        else:
+            command_string, index = self.insert_command(7,1,command_string,['--mainnet'])
+        self.execute_command(command_string, None)
 
         rawResult = self.execute_command(command_string, None)
         if rawResult == '':
@@ -509,9 +504,10 @@ class Node(Starter):
             'transaction', 'submit',
             '--tx-file', self.TRANSACTION_PATH_FILE + '/tx.signed']
         if self.CARDANO_NETWORK == 'testnet':
-            command_string, index = self.insert_command(
-                5, 1, command_string, [
-                    '--testnet-magic', self.CARDANO_NETWORK_MAGIC])
+            command_string, index = self.insert_command(5,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
+        else:
+            command_string, index = self.insert_command(5,1,command_string,['--mainnet'])
+        self.execute_command(command_string, None)
 
         rawResult = self.execute_command(command_string, None)
         print(rawResult)
@@ -640,9 +636,10 @@ class Node(Starter):
                     )
                     i = i + index
                 if self.CARDANO_NETWORK == 'testnet':
-                    command_string, index = self.insert_command(
-                        3 + i, 1, command_string, ['--testnet-magic', self.CARDANO_NETWORK_MAGIC]
-                    )
+                    command_string, index = self.insert_command(3 + i,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
+                else:
+                    command_string, index = self.insert_command(3 + i,1,command_string,['--mainnet'])
+                self.execute_command(command_string, None)
 
                 print(command_string)
 
@@ -889,7 +886,7 @@ class Keys(Starter):
 
         # Generate extended public account key xpub
         command_string = [
-            'cardano-cli', 'key', 'convert-cardano-address-key',
+            self.CARDANO_CLI_PATH, 'key', 'convert-cardano-address-key',
             '--shelley-payment-key', '--signing-key-file',
             self.path + '/temp_payment.xsk',
             '--out-file',
@@ -908,7 +905,7 @@ class Keys(Starter):
 
         # Get verification payment key from signing payment key.
         command_string = [
-            'cardano-cli', 'key', 'verification-key', '--signing-key-file',
+            self.CARDANO_CLI_PATH, 'key', 'verification-key', '--signing-key-file',
             self.path + '/' + name + '/' + name + '.payment.skey',
             '--verification-key-file',
             self.path + '/' + name + '/' + name + '.payment.evkey'
@@ -921,7 +918,7 @@ class Keys(Starter):
         # Get non-extended verification payment key
         # from extended verification payment key.
         command_string = [
-            'cardano-cli', 'key', 'non-extended-key',
+            self.CARDANO_CLI_PATH, 'key', 'non-extended-key',
             '--extended-verification-key-file',
             self.path + '/' + name + '/' + name + '.payment.evkey',
             '--verification-key-file',
@@ -938,16 +935,16 @@ class Keys(Starter):
 
         # Build payment addresses
         command_string = [
-            'cardano-cli', 'address', 'build',
+            self.CARDANO_CLI_PATH, 'address', 'build',
             '--payment-verification-key-file',
             self.path + '/' + name + '/' + name + '.payment.vkey',
-            '--testnet-magic',
-            str(self.cardano_network_magic), '--out-file',
-            self.path + '/' + name + '/' + name + '.payment.addr'
+            '--out-file', self.path + '/' + name + '/' + name + '.payment.addr'
         ]
+        if self.CARDANO_NETWORK == 'testnet':
+            command_string, index = self.insert_command(5,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
+        else:
+            command_string, index = self.insert_command(5,1,command_string,['--mainnet'])
         self.execute_command(command_string, None)
-        # if rawResult == '':
-        #     print("Build payment addresses: '%s'" % (self.path + '/' + name + '/' + name + '.payment.addr'))
 
         output = self.cat_files(
             self.path, '/' + name + '/' + name + '.payment.addr'
@@ -980,7 +977,7 @@ class Keys(Starter):
 
         # Generate extended public account key xpub
         command_string = [
-            'cardano-cli', 'key', 'convert-cardano-address-key',
+            self.CARDANO_CLI_PATH, 'key', 'convert-cardano-address-key',
             '--shelley-stake-key', '--signing-key-file',
             self.path + '/temp_stake.xsk',
             '--out-file',
@@ -993,7 +990,7 @@ class Keys(Starter):
         # output.stdout.close()
         # Get verification stake key from signing stake key.
         command_string = [
-            'cardano-cli', 'key', 'verification-key', '--signing-key-file',
+            self.CARDANO_CLI_PATH, 'key', 'verification-key', '--signing-key-file',
             self.path + '/' + name + '/' + name + '.stake.skey',
             '--verification-key-file',
             self.path + '/' + name + '/' + name + '.stake.evkey'
@@ -1003,7 +1000,7 @@ class Keys(Starter):
         # Get non-extended verification stake key
         # from extended verification stake key.
         command_string = [
-            'cardano-cli', 'key', 'non-extended-key',
+            self.CARDANO_CLI_PATH, 'key', 'non-extended-key',
             '--extended-verification-key-file',
             self.path + '/' + name + '/' + name + '.stake.evkey',
             '--verification-key-file',
@@ -1018,13 +1015,17 @@ class Keys(Starter):
 
         # Build stake addresses
         command_string = [
-            'cardano-cli', 'stake-address', 'build',
+            self.CARDANO_CLI_PATH, 'stake-address', 'build',
             '--stake-verification-key-file',
             self.path + '/' + name + '/' + name + '.stake.vkey',
-            '--testnet-magic',
-            str(self.cardano_network_magic), '--out-file',
+            '--out-file',
             self.path + '/' + name + '/' + name + '.stake.addr'
         ]
+        if self.CARDANO_NETWORK == 'testnet':
+            command_string, index = self.insert_command(5,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
+        else:
+            command_string, index = self.insert_command(5,1,command_string,['--mainnet'])
+        self.execute_command(command_string, None)
         self.execute_command(command_string, None)
         output = self.cat_files(
             self.path, '/' + name + '/' + name + '.stake.addr'
@@ -1051,15 +1052,19 @@ class Keys(Starter):
         """
         # Build base addresses
         command_string = [
-            'cardano-cli', 'address', 'build',
+            self.CARDANO_CLI_PATH, 'address', 'build',
             '--payment-verification-key-file',
             self.path + '/' + name + '/' + name + '.payment.vkey',
             '--stake-verification-key-file',
             self.path + '/' + name + '/' + name + '.stake.vkey',
-            '--testnet-magic', str(self.cardano_network_magic),
             '--out-file',
             self.path + '/' + name + '/' + name + '.base.addr'
         ]
+        if self.CARDANO_NETWORK == 'testnet':
+            command_string, index = self.insert_command(7,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
+        else:
+            command_string, index = self.insert_command(7,1,command_string,['--mainnet'])
+        self.execute_command(command_string, None)
         self.execute_command(command_string, None)
         output = self.cat_files(
             self.path, '/' + name + '/' + name + '.base.addr'
@@ -1075,7 +1080,7 @@ class Keys(Starter):
         keys_file_path = self.path + '/' + name
         # Build hash from key
         command_string = [
-            'cardano-cli', 'address', 'key-hash',
+            self.CARDANO_CLI_PATH, 'address', 'key-hash',
             '--payment-verification-key-file',
             keys_file_path + '/' + name + '.payment.vkey'
         ]
@@ -1168,7 +1173,7 @@ class Keys(Starter):
         create_folder(keys_file_path)
         # Build Cardano keys with Cardano CLI
         command_string = [
-            'cardano-cli', 'address', 'key-gen',
+            self.CARDANO_CLI_PATH, 'address', 'key-gen',
             '--verification-key-file',
             keys_file_path + '/' + name + '.payment.vkey',
             '--signing-key-file',
@@ -1178,7 +1183,7 @@ class Keys(Starter):
         rawResult = self.execute_command(command_string, None)
 
         command_string = [
-            'cardano-cli', 'stake-address', 'key-gen',
+            self.CARDANO_CLI_PATH, 'stake-address', 'key-gen',
             '--verification-key-file',
             keys_file_path + '/' + name + '.stake.vkey',
             '--signing-key-file',
@@ -1194,15 +1199,16 @@ class Keys(Starter):
         keys_file_path = self.path + '/' + script_name
         # Build script addresses
         command_string = [
-            'cardano-cli', 'address', 'build',
+            self.CARDANO_CLI_PATH, 'address', 'build',
             '--payment-script-file',
             keys_file_path + '/' + script_name + '.script',
-            '--testnet-magic', str(self.cardano_network_magic),
             '--out-file',
             keys_file_path + '/' + script_name + '.script.addr'
         ]
+        if self.CARDANO_NETWORK == 'testnet':
+            command_string, index = self.insert_command(5,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
+        else:
+            command_string, index = self.insert_command(5,1,command_string,['--mainnet'])
         self.execute_command(command_string, None)
-        # output = utils.cat_files(
-        #     keys_file_path, '/' + script_name + '.script.addr'
-        #     )
+        self.execute_command(command_string, None)
         print("Script address stored in '%s'" % (keys_file_path))
