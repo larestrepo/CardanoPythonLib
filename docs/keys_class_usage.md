@@ -33,7 +33,11 @@ Available methods are:
 
 ***
 
-Using the deriveAllKeys method, you can create all the keys with just few lines of code ( run this from python3 in the terminal or within a file like the main.py provided): 
+Using the deriveAllKeys method, you can create all the keys with just a few lines of code ( run this from python3 in the terminal or within a file like the main.py provided): 
+
+### Option 1
+
+Create a wallet from scratch provide the number of words (recommended size = 24)
 
 ```python
 from cardanopythonlib import base
@@ -41,7 +45,7 @@ from cardanopythonlib import base
 keys = base.Keys()
 wallet_name = 'wallet01'
 nmemonic_size = 24
-key.deriveAllKeys(nmemonic_size,wallet_name)
+key.deriveAllKeys(wallet_name, size= 24)
 ```
 The code will return something similar to this:
 
@@ -50,6 +54,19 @@ The code will return something similar to this:
     ##################################
 
 All the keys will be store at './priv/wallets/<name_provided>
+
+### Option 2
+
+Recreate a wallet from nmemonics. You need to provide the words as a comma separated list
+
+```python
+from cardanopythonlib import base
+
+keys = base.Keys()
+wallet_name = 'wallet01'
+mnemonic = ['dial','ivory','leave','fog','boring','nose','brass','food','kitchen','example','fame','expire','apart','game','pipe','ship','excite','sponsor','bread','place','beach','raven','prevent','stem']
+key.deriveAllKeys(wallet_name, words= mnemonic)
+```
 
 You can take a backup and delete the folder. Store your keys in a private location. This library does not keep any log or backup.
 

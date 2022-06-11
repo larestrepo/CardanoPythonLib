@@ -56,14 +56,36 @@ class TestLibrary (unittest.TestCase):
         minUTxOValue = self.starter.min_utxo_lovelace(0, 0, utxoCostPerWord, '')
         self.assertEqual(minUTxOValue, 1275834, "Problem with the min_utxo_lovelace function")
 
-
-    def test_create_all_keys(self):
+    def test_create_all_keys_with_words(self):
         keys = base.Keys()
-
         mnemonic_size = 24
         wallet_name = str(uuid.uuid1())
         print (f"Testing derive all keys with nmemonic size of {mnemonic_size} and wallet name {wallet_name}")
-        key = keys.deriveAllKeys(mnemonic_size, wallet_name)
+        mnemonic = ['dial','ivory','leave','fog','boring','nose','brass','food','kitchen','example','fame','expire','apart','game','pipe','ship','excite','sponsor','bread','place','beach','raven','prevent','stem']
+        key = keys.deriveAllKeys(wallet_name, words=mnemonic)
+        self.assertEqual(len(key['mnemonic']), mnemonic_size, "Problem with mnemonic")
+        self.assertTrue(key['root_key'].startswith('root_xsk'), "Problem with root key")
+        self.assertTrue(key['private_stake_key'].startswith('stake_xsk'), "Problem with private stake key")
+        self.assertTrue(key['private_payment_key'].startswith('addr_xsk'), "Problem with private payment key")
+        self.assertTrue(key['payment_account_key'].startswith('addr_xvk'), "Problem with payment account key")
+        self.assertTrue(key['stake_account_key'].startswith('stake_xvk'), "Problem with stake account key")
+        self.assertTrue(key['payment_addr'].startswith('addr'), "Problem with payment address")
+        self.assertEqual(key['payment_addr_path'], "./.priv/wallets/" + wallet_name + "/" + wallet_name + ".payment.addr", "Problem with payment_addr_path")
+        self.assertEqual(key['payment_skey_path'], "./.priv/wallets/" + wallet_name + "/" + wallet_name + ".payment.skey", "Problem with payment_skey_path")
+        self.assertEqual(key['payment_vkey_path'], "./.priv/wallets/" + wallet_name + "/" + wallet_name + ".payment.vkey", "Problem with payment_vkey_path")
+        self.assertEqual(key['stake_skey_path'], "./.priv/wallets/" + wallet_name + "/" + wallet_name + ".stake.skey", "Problem with stake_skey_path")
+        self.assertEqual(key['stake_vkey_path'], "./.priv/wallets/" + wallet_name + "/" + wallet_name + ".stake.vkey", "Problem with stake_vkey_path")
+        self.assertEqual(key['stake_addr_path'], "./.priv/wallets/" + wallet_name + "/" + wallet_name + ".stake.addr", "Problem with stake_addr_path")
+        self.assertTrue(key['base_addr_path'].startswith('addr'), "Problem with base_addr_path")
+        self.assertEqual(len(key['hash_verification_key']), 56, "Problem with hash_verification_key")
+        remove_folder("./.priv/wallets/" + wallet_name)
+
+    def test_create_all_keys_with_size(self):
+        keys = base.Keys()
+        mnemonic_size = 24
+        wallet_name = str(uuid.uuid1())
+        print (f"Testing derive all keys with nmemonic size of {mnemonic_size} and wallet name {wallet_name}")
+        key = keys.deriveAllKeys(wallet_name, size=mnemonic_size)
         self.assertEqual(len(key['mnemonic']), mnemonic_size, "Problem with mnemonic")
         self.assertTrue(key['root_key'].startswith('root_xsk'), "Problem with root key")
         self.assertTrue(key['private_stake_key'].startswith('stake_xsk'), "Problem with private stake key")
