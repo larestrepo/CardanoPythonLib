@@ -104,6 +104,28 @@ class Starter():
         minUTxOValue = finalized_size * utxoCostPerWord
 
         return minUTxOValue
+    
+    def min_utxo_lovelace1(self, num_assets, total_asset_name_len, utxoCostPerWord, era):
+
+        #///////////////////////////////////////////////////////
+        # minAda (u) = max (minUTxOValue, (quot (minUTxOValue, adaOnlyUTxOSize)) * (utxoEntrySizeWithoutVal + (size B)))
+
+        POLICYIDSize = 28
+        utxo_entry_size = 27
+        has_datum = False
+        num_policies = 1
+
+        byte_len = num_assets * 12 + total_asset_name_len + num_policies * POLICYIDSize
+        # print(byte_len)
+
+        b_size = 6 + (byte_len + 7) // 8
+        
+
+        data_hash_size = 10 if has_datum else 0
+        finalized_size = utxo_entry_size + b_size + data_hash_size
+        minUTxOValue = finalized_size * utxoCostPerWord
+
+        return minUTxOValue
 
     @staticmethod
     def cat_files(path, name):
@@ -541,7 +563,16 @@ class Node(Starter):
                 'mint': {
                     'type': 'dict',
                     'nullable': True,
-                    'schema': {'name': {'type': 'string', 'required': True,}, 'amount': {'type': 'integer', 'required': True,}, 'policyID': {'type': 'string', 'required': True}}
+                    'schema': {
+                    'policyID': {'type': 'string', 'required': True},
+                    'policy_path': {'type': 'string', 'required': True},
+                    "tokens": {'type': 'list', 'schema':{ 'type': 'dict',
+                        'schema':{
+                        'name': {'type': 'string', 'required': True},
+                        'amount': {'type': 'integer', 'required': True},
+                        }
+                        }
+                    }}
                 },
                 'script_path': {
                     'type': 'string',
@@ -573,7 +604,7 @@ class Node(Starter):
             self.query_protocol()
             with open(self.TRANSACTION_PATH_FILE + '/protocol.json', 'r') as file:
                 utxoCostPerWord = json.load(file)['utxoCostPerWord']
-            min_utxo_value = self.min_utxo_lovelace(0, 0, utxoCostPerWord, '')
+            min_utxo_value = self.min_utxo_lovelace1(0, 0, utxoCostPerWord, '')
             quantity_array = [min_utxo_value]
 
             addr_origin_tx = self.get_transactions(address_origin)
@@ -588,22 +619,24 @@ class Node(Starter):
                 mint_string = ''
                 if mint is not None:
                     total_asset_name_len = 0
-                    for key, values in mint.items():
-                        policyid = key
-                        for token_info in values:
-                            asset_name = token_info['name'].encode('utf-8')
-                            asset_name = b16encode(asset_name).decode('utf-8')
-                            asset_quantity = int(token_info['amount'])
-                            asset_quantity_array.append(asset_quantity)
-                            total_asset_name_len += len(asset_name)
-                            mint_output_string += str(asset_quantity) + ' ' + \
+                    policyid = mint.get('policyID')
+                    policy_path = mint.get('policy_path')
+                    for token in mint.get('tokens'):
+                        asset_name = token.get('name').encode('utf-8')
+                        asset_name = b16encode(asset_name).decode('utf-8')
+                        asset_quantity = token.get('amount')
+                        asset_quantity_array.append(asset_quantity)
+                        total_asset_name_len += len(asset_name)
+                        mint_output_string += str(asset_quantity) + ' ' + \
                                 str(policyid) + '.' + str(asset_name) + '+'
 
                     mint_output_string = mint_output_string[:-1]
                     mint_string = '--mint='
                     mint_string = mint_string + mint_output_string
-                    min_utxo_value = self.min_utxo_lovelace(
-                        sum(asset_quantity_array), total_asset_name_len, utxoCostPerWord, '')
+                    # min_utxo_value = self.min_utxo_lovelace1(
+                    #     sum(asset_quantity_array), total_asset_name_len, utxoCostPerWord, '')
+                    min_utxo_value = self.min_utxo_lovelace1(
+                        len(mint.get('tokens')), total_asset_name_len, utxoCostPerWord, '')
                     addr_output_array.append('--tx-out')
                     addr_output_array.append(address_origin + '+' + str(min_utxo_value) + '+' + mint_output_string)
 
@@ -653,7 +686,7 @@ class Node(Starter):
                 if mint_string != '':
                     mint_array.append(mint_string)
                     mint_array.append('--minting-script-file')
-                    mint_array.append(root_keys_path + address_origin_name + '.script')
+                    mint_array.append(policy_path)
                     command_string, index = self.insert_command(3 + i, 1, command_string, mint_array)
                     i = i + index
                 script_path_array = []
