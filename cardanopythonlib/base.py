@@ -547,11 +547,10 @@ class Node(Starter):
                     'nullable': True,
                     'schema':{ 'type': 'dict', 'schema':{
                         'address': {'type': 'string', 'required': True},
-                        'amount': {'type': 'dict', 'required': True, 'schema': {'quantity': {'type': 'integer', 'required': True}, 'unit': {'type': 'string'}}},
-                        'assets': {'type': 'dict', 'nullable': True}
-                    }
-                    }
-                },
+                        'amount': {'type': 'dict', 'required': True, 'schema': {'quantity': {'type': 'integer', 'required': True}, 'unit': {'type': 'string', 'allowed': ['lovelace', 'ada']}}},
+                        'assets': {'type': 'list', 'nullable': True, 
+                            'schema': {'type': 'dict', 'schema':{'asset_name': {'type': 'string', 'required': True}, 'amount': {'type': 'integer', 'required': True}, 'policyID': {'type': 'string', 'required': True}}}}
+                }}},
                 'change_address': {
                     'type': 'string',
                     'required': True,
@@ -603,59 +602,109 @@ class Node(Starter):
 
             self.query_protocol()
             with open(self.TRANSACTION_PATH_FILE + '/protocol.json', 'r') as file:
-                utxoCostPerWord = json.load(file)['utxoCostPerWord']
+                utxoCostPerWord = json.load(file).get('utxoCostPerWord')
             min_utxo_value = self.min_utxo_lovelace1(0, 0, utxoCostPerWord, '')
             quantity_array = [min_utxo_value]
 
-            addr_origin_tx = self.get_transactions(address_origin)
-            # addr_origin_balance = self.get_balance(address_origin)
+            addr_origin_balance = self.get_balance(address_origin)
+            if addr_origin_balance.get('lovelace') is not None:
             # if addr_origin_balance['lovelace'] != 0:
-            if addr_origin_tx != {}:
+            # if addr_origin_tx != {}:
                 # addr_origin_tx = self.get_transactions(address_origin)
-
                 mint_output_string = ''
                 addr_output_array = []
-                asset_quantity_array = []
-                mint_string = ''
+                mint_quantity_array = []
+                # mint_string = ''
+                mint_array = []
+                total_mint_name_len = 0
+                length_mint = 0
                 if mint is not None:
-                    total_asset_name_len = 0
+                    length_mint = len(mint.get('tokens'))
                     policyid = mint.get('policyID')
                     policy_path = mint.get('policy_path')
                     for token in mint.get('tokens'):
-                        asset_name = token.get('name').encode('utf-8')
-                        asset_name = b16encode(asset_name).decode('utf-8')
-                        asset_quantity = token.get('amount')
-                        asset_quantity_array.append(asset_quantity)
-                        total_asset_name_len += len(asset_name)
-                        mint_output_string += str(asset_quantity) + ' ' + \
-                                str(policyid) + '.' + str(asset_name) + '+'
+                        mint_name = token.get('name').encode('utf-8')
+                        mint_name = b16encode(mint_name).decode('utf-8')
+                        mint_quantity = token.get('amount')
+                        mint_quantity_array.append(mint_quantity)
+                        total_mint_name_len += len(mint_name)
+                        mint_output_string += str(mint_quantity) + ' ' + \
+                                str(policyid) + '.' + str(mint_name) + '+'
 
                     mint_output_string = mint_output_string[:-1]
                     mint_string = '--mint='
                     mint_string = mint_string + mint_output_string
+                    mint_output_string = '+' + mint_output_string
                     # min_utxo_value = self.min_utxo_lovelace1(
-                    #     sum(asset_quantity_array), total_asset_name_len, utxoCostPerWord, '')
-                    min_utxo_value = self.min_utxo_lovelace1(
-                        len(mint.get('tokens')), total_asset_name_len, utxoCostPerWord, '')
-                    addr_output_array.append('--tx-out')
-                    addr_output_array.append(address_origin + '+' + str(min_utxo_value) + '+' + mint_output_string)
+                    #     len(mint.get('tokens')), total_asset_name_len, utxoCostPerWord, '')
+                    # addr_output_array.append('--tx-out')
+                    # addr_output_array.append(address_origin + '+' + str(min_utxo_value) + '+' + mint_output_string)
 
                     quantity_array = [min_utxo_value]
+                    mint_array.append(mint_string)
+                    mint_array.append('--minting-script-file')
+                    mint_array.append(policy_path)
 
+                length_assets = 0
+                total_asset_name_len = 0
+                asset_output_string = ''
                 if address_destin_array is not None:
                     for address_destin in address_destin_array:
-                        quantity = address_destin['amount']['quantity']
-                        quantity_array.append(quantity)
-
-                        addr_output_array.append('--tx-out')
-                        addr_output_array.append(address_destin['address'] +
-                                                 '+' + str(address_destin['amount']['quantity']))
+                        amount = address_destin.get('amount')
+                        quantity = amount.get('quantity')
+                        if amount.get('unit') == 'ada':
+                            quantity = quantity * 1_000_000
+                        if address_destin.get('assets') is not None:
+                            length_assets = len(address_destin.get('assets'))
+                            # addr_output_array.append('--tx-out')
+                            # address_full_string = address_destin.get('address') + '+' + str(quantity)
+                            for asset in address_destin.get('assets'):
+                                asset_name = asset.get('asset_name').encode('utf-8')
+                                asset_name = b16encode(asset_name).decode('utf-8')
+                                total_asset_name_len += len(asset_name)
+                                amount = asset.get('amount')
+                                policyID = asset.get('policyID')
+                                asset_full_name = policyID + '.' + asset_name
+                                if asset_full_name in addr_origin_balance:
+                                    asset_balance = addr_origin_balance.get(asset_full_name)
+                                    if amount <= asset_balance:
+                                        asset_output_string += str(amount) + ' ' + asset_full_name + '+'
+                                        # mint_output_string += str(amount) + '+' + 
+                                    else:
+                                        raise Exception()
+                                else:
+                                    raise Exception()
+                            asset_output_string = asset_output_string[:-1]
+                            min_utxo_value = self.min_utxo_lovelace1(
+                                length_mint + length_assets, total_mint_name_len + total_asset_name_len, utxoCostPerWord, '')
+                            if quantity >= min_utxo_value:
+                                quantity_array.append(quantity)
+                                addr_output_array.append('--tx-out')
+                                addr_output_array.append(address_destin.get('address') + '+' + str(quantity) + '+' + asset_output_string + mint_output_string)
+                            else:
+                                raise Exception()
+                        else:
+                            min_utxo_value = self.min_utxo_lovelace1(
+                             length_mint + length_assets, total_mint_name_len + total_asset_name_len, utxoCostPerWord, '')
+                            addr_output_array.append('--tx-out')
+                            addr_output_array.append(address_destin.get('address') + '+' + str(quantity) + mint_output_string)
+                            # addr_output_array.append('--tx-out')
+                            # addr_output_array.append(address_origin + '+' + str(min_utxo_value) + '+' + mint_output_string)
+                        # addr_output_array.append(address_full_string)
+                else:
+                    addr_output_array.append('--tx-out')
+                    addr_output_array.append(address_origin + '+' + str(min_utxo_value) + mint_output_string)
+                # min_utxo_value = self.min_utxo_lovelace1(
+                #     length_mint + length_assets, total_mint_name_len + total_asset_name_len, utxoCostPerWord, '')
+                # addr_output_array.append('--tx-out')
+                # addr_output_array.append(address_origin + '+' + str(min_utxo_value) + '+' + mint_output_string)
 
                 addr_output_array.append('--change-address')
                 addr_output_array.append(change_address)
 
                 target_calculated = sum(quantity_array)
                 deplete = False
+                addr_origin_tx = self.get_transactions(address_origin)
                 TxHash_in, amount_equal = self.utxo_selection(
                     addr_origin_tx, target_calculated, deplete)
                 command_string = [
@@ -682,11 +731,7 @@ class Node(Starter):
                         3 + i, 1, command_string, metadata_array
                     )
                     i = i + index
-                mint_array = []
-                if mint_string != '':
-                    mint_array.append(mint_string)
-                    mint_array.append('--minting-script-file')
-                    mint_array.append(policy_path)
+                if mint_array != []:
                     command_string, index = self.insert_command(3 + i, 1, command_string, mint_array)
                     i = i + index
                 script_path_array = []
@@ -714,7 +759,10 @@ class Node(Starter):
         except TypeError:
             print("Missing required arguments")
         except AssertionError:
-            print(f"Errors in the message dictionary format. Check {v.errors}")
+            print(f"Errors in the message dictionary format. Check {v.errors}")  # type: ignore
+        except Exception:
+            print(f"Errors while building the transaction. Probably insufficient ada or native asset funds")
+
 
     def analyze_tx(self, tx_name_file):
         print('Analyzing the transaction....')
