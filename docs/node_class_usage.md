@@ -277,7 +277,106 @@ The result is:
 
 Then, the actual minting transaction
 
+5. Transaction sending to a different address with tokens
+To send to different addresses use the field address_destin as a list of address following the specified format.
 
+```python
+from cardanopythonlib import base
+node = base.Node()
+address_origin ='addr_test1qp3hc694xtngj6vt4kgxppqz5807kxyy737l4s7n35vmhgrjkcctzvtrmt0chuqgaphal08kaqhn0gn295v7wefe95eqh3m3q7'
+metadata = None
+address_destin = [
+        {
+          "address": "addr_test1qr2ac9vl2epy3yjynkqyfuskx6wp6ld70579v3s6wknve3rjkcctzvtrmt0chuqgaphal08kaqhn0gn295v7wefe95eqvl97xq",
+          "amount": {
+                "quantity": 3000000,
+                "unit": "lovelace"
+            },
+          "assets": [{
+            "asset_name": "Prueba4",
+            "amount": 4575122544123,
+            "policyID": "ae6498eeb6f7f7bdd3b411c7d3bdf0dfd29f6b989382f9bdb1279638"
+          },
+        },
+      ]
+witness = 1
+params = {
+    "message": {
+        "tx_info": {
+            "address_origin": address_origin,
+            "address_destin": address_destin,
+            "change_address": address_origin,
+            "metadata": metadata,
+            "mint": None,
+            "script_path": None,
+            "witness": witness,
+        }
+    }
+}
+
+result = node.build_tx_components(params)
+```
+The result is:
+
+    ['cardano-cli', 'transaction', 'build', '--tx-in', '71c979e89fdb6930af4369d8c6315aa626e9197c37268899573d9026add69626#0', '--tx-in', 'b31bb6acaec9eb167e034cc2b8f2fca205211174cd1f721f10f217aa90efaf6d#1', '--tx-out', 'addr_test1qr2ac9vl2epy3yjynkqyfuskx6wp6ld70579v3s6wknve3rjkcctzvtrmt0chuqgaphal08kaqhn0gn295v7wefe95eqvl97xq+3000000+4575122544123 ae6498eeb6f7f7bdd3b411c7d3bdf0dfd29f6b989382f9bdb1279638.50727565626134', '--change-address', 'addr_test1vqrfdj8fkzs0pxg0eu4p38apgd430stz5hafx7pnsxn0ccg4jqkyd', '--testnet-magic', '1097911063', '--witness-override', '1', '--out-file', './.priv/transactions/tx.draft']
+    Estimated transaction fee: Lovelace 170737
+
+    ################################
+
+    Sign transaction file stored in './.priv/transactions/tx.signed'
+    Transaction successfully submitted.
+
+5. Transaction sending all combinations
+To send to different addresses use the field address_destin as a list of address following the specified format.
+
+```python
+from cardanopythonlib import base
+node = base.Node()
+address_origin ='addr_test1qp3hc694xtngj6vt4kgxppqz5807kxyy737l4s7n35vmhgrjkcctzvtrmt0chuqgaphal08kaqhn0gn295v7wefe95eqh3m3q7'
+metadata = metadata = {"1337": {
+        "name": "hello world",
+        "completed": 0
+    }}
+address_destin = [
+        {
+          "address": "addr_test1qr2ac9vl2epy3yjynkqyfuskx6wp6ld70579v3s6wknve3rjkcctzvtrmt0chuqgaphal08kaqhn0gn295v7wefe95eqvl97xq",
+          "amount": {
+                "quantity": 3000000,
+                "unit": "lovelace"
+            },
+          "assets": [{
+            "asset_name": "Prueba4",
+            "amount": 4575122544123,
+            "policyID": "ae6498eeb6f7f7bdd3b411c7d3bdf0dfd29f6b989382f9bdb1279638"
+          },
+        },
+      ]
+witness = 1
+params = {
+    "message": {
+        "tx_info": {
+            "address_origin": address_origin,
+            "address_destin": address_destin,
+            "change_address": address_origin,
+            "metadata": metadata,
+            "mint": None,
+            "script_path": None,
+            "witness": witness,
+        }
+    }
+}
+
+result = node.build_tx_components(params)
+```
+The result is:
+
+    ['cardano-cli', 'transaction', 'build', '--tx-in', '71c979e89fdb6930af4369d8c6315aa626e9197c37268899573d9026add69626#0', '--tx-in', 'b31bb6acaec9eb167e034cc2b8f2fca205211174cd1f721f10f217aa90efaf6d#1', '--tx-out', 'addr_test1qr2ac9vl2epy3yjynkqyfuskx6wp6ld70579v3s6wknve3rjkcctzvtrmt0chuqgaphal08kaqhn0gn295v7wefe95eqvl97xq+3000000+4575122544123 ae6498eeb6f7f7bdd3b411c7d3bdf0dfd29f6b989382f9bdb1279638.50727565626134', '--change-address', 'addr_test1vqrfdj8fkzs0pxg0eu4p38apgd430stz5hafx7pnsxn0ccg4jqkyd', '--testnet-magic', '1097911063', '--witness-override', '1', '--out-file', './.priv/transactions/tx.draft']
+    Estimated transaction fee: Lovelace 170737
+
+    ################################
+
+    Sign transaction file stored in './.priv/transactions/tx.signed'
+    Transaction successfully submitted.
 
 ### sign_transaction
 The sign transaction just takes the tx.draft previously created with the build_tx_components and stores a new tx.signed file in the same default path. This is just the transaction file signed with the skey. The skey file should be in the./.priv/wallet/<wallet_name> folder with the name <wallet_name.payment.skey>. If the Keys class was used, the keys should be there by default otherwise you need to place the file in the path. 

@@ -4,7 +4,7 @@ keys = base.Keys()
 
 # Option 1
 
-# wallet_name = 'test02'
+# wallet_name = 'receiving'
 # nmemonic_size = 24
 # keys.deriveAllKeys(wallet_name, size= nmemonic_size)
 
@@ -13,41 +13,45 @@ keys = base.Keys()
 node = base.Node()
 node.KEYS_FILE_PATH
 wallet_id = 'wallet01'
-# node.get_transactions(wallet_id)
+node.get_transactions(wallet_id)
+# print(node.analyze_tx('tx.draft'))
 
-# hash= keys.keyHashing(wallet_id)
-# node.create_multisig_script(wallet_id,'all','',[hash])
-# node.create_policy_id(wallet_id)
+hash= keys.keyHashing(wallet_id)
+node.create_multisig_script(wallet_id,'all','',[hash])
+node.create_policy_id(wallet_id)
 
 address_origin ='addr_test1vqrfdj8fkzs0pxg0eu4p38apgd430stz5hafx7pnsxn0ccg4jqkyd'
 address_destin = [
         {
           "address": "addr_test1qr2ac9vl2epy3yjynkqyfuskx6wp6ld70579v3s6wknve3rjkcctzvtrmt0chuqgaphal08kaqhn0gn295v7wefe95eqvl97xq",
           "amount": {
-                "quantity": 3000000,
+                "quantity": 2000000,
                 "unit": "lovelace"
             },
-          "assets": [{
-            "asset_name": "Prueba4",
-            "amount": 4575122544123,
+            "assets": [{
+            "asset_name": "Test",
+            "amount": 10000000,
             "policyID": "ae6498eeb6f7f7bdd3b411c7d3bdf0dfd29f6b989382f9bdb1279638"
-          },
-          ]
+          }],
+         
         },
       ]
 # address_destin = None
-metadata = None
+metadata =  {"1337": {
+        "name": "hello world",
+        "completed": 0
+    }}
 witness = 1
 
 mint = { "policyID": "ae6498eeb6f7f7bdd3b411c7d3bdf0dfd29f6b989382f9bdb1279638",
          "policy_path": '.priv/wallets/wallet01/wallet01.script',
          "tokens": [
-          {"name": "Prueba4",
+          {"name": "Prueba38mil",
           "amount": 20},
          ]
         }
 
-mint = None
+# mint = None
 
 params = {
     "message": {

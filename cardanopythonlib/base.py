@@ -246,7 +246,6 @@ class Node(Starter):
         rawResult = self.execute_command(command_string, None)
 
         # Unpacking the results
-        transactions = {}
         token_transactions = []
         for line in rawResult.splitlines():
             if 'lovelace' in line:
@@ -267,8 +266,7 @@ class Node(Starter):
                     tr_amount['amount'] = trans[3 + i * 3 + 2]
                     transaction['amounts'].append(tr_amount)
                 token_transactions.append(transaction)
-                transactions['transactions'] = token_transactions
-        return transactions
+        return token_transactions
 
     def get_balance(self, wallet_id):
         """Get the balance in dictionary format at the specified wallet
@@ -292,7 +290,6 @@ class Node(Starter):
             balance_dict['lovelace'] = 0
             balance_dict['assets'] = 0
         else:
-            transactions = transactions['transactions']
             amounts = []
             for utxo in transactions:
                 for amount in utxo['amounts']:
@@ -306,7 +303,7 @@ class Node(Starter):
                     print(f'Total balance of "{key}" is "{balance}"')
         return balance_dict
 
-    def utxo_selection(self, addr_origin_tx, quantity, deplete):
+    def utxo_selection(self, addr_origin_tx, quantity, deplete, coin_name):
         """ Function based on the coin selection algorithm to properly handle
         the use of utxos in the wallet.
         Rules are:
@@ -339,28 +336,27 @@ class Node(Starter):
         utxo_found = False
         amount_equal = 0
         if addr_origin_tx:
-            transactions = addr_origin_tx['transactions'][:]
-            for utxo in transactions:
-                for amount in utxo['amounts']:
-                    if amount['token'] == 'lovelace':
+            for utxo in addr_origin_tx:
+                for amount in utxo.get('amounts'):
+                    if amount.get('token') == coin_name:
                         if deplete:
                             TxHash.append('--tx-in')
-                            TxHash.append([utxo['hash'] + '#' + utxo['id']])
-                            amount_equal += int(amount['amount'])
+                            TxHash.append([utxo.get('hash') + '#' + utxo.get('id')])
+                            amount_equal += int(amount.get('amount'))
                             utxo_found = True
                             break
-                        if int(amount['amount']) == quantity:
+                        if int(amount.get('amount')) == quantity:
                             TxHash.append('--tx-in')
-                            TxHash.append(utxo['hash'] + '#' + utxo['id'])
-                            amount_equal = int(amount['amount'])
+                            TxHash.append(utxo.get('hash') + '#' + utxo.get('id'))
+                            amount_equal = int(amount.get('amount'))
                             utxo_found = True
                             break
-                        elif int(amount['amount']) < quantity + minUTXO:
-                            TxHash_lower.append(utxo['hash'] + '#' + utxo['id'])
-                            amount_lower.append(int(amount['amount']))
-                        elif int(amount['amount']) > quantity + minUTXO:
-                            TxHash_greater.append(utxo['hash'] + '#' + utxo['id'])
-                            amount_greater.append(int(amount['amount']))
+                        elif int(amount.get('amount')) < quantity + minUTXO:
+                            TxHash_lower.append(utxo.get('hash') + '#' + utxo.get('id'))
+                            amount_lower.append(int(amount.get('amount')))
+                        elif int(amount.get('amount')) > quantity + minUTXO:
+                            TxHash_greater.append(utxo.get('hash') + '#' + utxo.get('id'))
+                            amount_greater.append(int(amount.get('amount')))
 
             if not utxo_found:
                 if sum(amount_lower) == quantity:
@@ -380,13 +376,13 @@ class Node(Starter):
                     utxo_array = []
                     amount_array = []
                     for _ in range(999):
-                        index_random = random.randint(0, len(transactions) - 1)
-                        utxo = transactions.pop(index_random)
+                        index_random = random.randint(0, len(addr_origin_tx) - 1)
+                        utxo = addr_origin_tx.pop(index_random)
                         utxo_array.append('--tx-in')
-                        utxo_array.append(utxo['hash'] + '#' + utxo['id'])
-                        for amount in utxo['amounts']:
-                            if amount['token'] == 'lovelace':
-                                amount_array.append(int(amount['amount']))
+                        utxo_array.append(utxo.get('hash') + '#' + utxo.get('id'))
+                        for amount in utxo.get('amounts'):
+                            if amount.get('token') == coin_name:
+                                amount_array.append(int(amount.get('amount')))
                         if sum(amount_array) >= quantity + minUTXO:
                             amount_equal = sum(amount_array)
                             break
@@ -497,20 +493,22 @@ class Node(Starter):
 
         return policyID
 
-    def sign_transaction(self, sign_address_name):
+    def sign_transaction(self, *args):
         """Sign the transaction based on tx_raw file.
         """
         command_string = [
             self.CARDANO_CLI_PATH,
             'transaction', 'sign',
             '--tx-body-file', self.TRANSACTION_PATH_FILE + '/tx.draft',
-            '--signing-key-file', self.KEYS_FILE_PATH + '/' + sign_address_name + '/' + sign_address_name
-            + '.payment.skey', '--out-file', self.TRANSACTION_PATH_FILE + '/tx.signed']
-        i = 0
+            # '--signing-key-file', self.KEYS_FILE_PATH + '/' + sign_address_name + '/' + sign_address_name + '.payment.skey', 
+            '--out-file', self.TRANSACTION_PATH_FILE + '/tx.signed']
+        index = 5
+        for arg in args:
+            command_string, index = self.insert_command(index,1,command_string,['--signing-key-file', self.KEYS_FILE_PATH + '/' + arg + '/' + arg + '.payment.skey'])
         if self.CARDANO_NETWORK == 'testnet':
-            command_string, index = self.insert_command(7,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
+            command_string, index = self.insert_command(index + 5,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
         else:
-            command_string, index = self.insert_command(7,1,command_string,['--mainnet'])
+            command_string, index = self.insert_command(index + 5,1,command_string,['--mainnet'])
 
         rawResult = self.execute_command(command_string, None)
         if rawResult == '':
@@ -603,10 +601,11 @@ class Node(Starter):
             self.query_protocol()
             with open(self.TRANSACTION_PATH_FILE + '/protocol.json', 'r') as file:
                 utxoCostPerWord = json.load(file).get('utxoCostPerWord')
-            min_utxo_value = self.min_utxo_lovelace1(0, 0, utxoCostPerWord, '')
-            quantity_array = [min_utxo_value]
+            # min_utxo_value = self.min_utxo_lovelace1(0, 0, utxoCostPerWord, '')
+            # quantity_array = [min_utxo_value]
 
             addr_origin_balance = self.get_balance(address_origin)
+            addr_origin_tx = self.get_transactions(address_origin)
             if addr_origin_balance.get('lovelace') is not None:
             # if addr_origin_balance['lovelace'] != 0:
             # if addr_origin_tx != {}:
@@ -614,6 +613,7 @@ class Node(Starter):
                 mint_output_string = ''
                 addr_output_array = []
                 mint_quantity_array = []
+                quantity_array = []
                 # mint_string = ''
                 mint_array = []
                 total_mint_name_len = 0
@@ -640,7 +640,7 @@ class Node(Starter):
                     # addr_output_array.append('--tx-out')
                     # addr_output_array.append(address_origin + '+' + str(min_utxo_value) + '+' + mint_output_string)
 
-                    quantity_array = [min_utxo_value]
+                    # quantity_array = [min_utxo_value]
                     mint_array.append(mint_string)
                     mint_array.append('--minting-script-file')
                     mint_array.append(policy_path)
@@ -648,6 +648,7 @@ class Node(Starter):
                 length_assets = 0
                 total_asset_name_len = 0
                 asset_output_string = ''
+                TxHash_in_asset = []
                 if address_destin_array is not None:
                     for address_destin in address_destin_array:
                         amount = address_destin.get('amount')
@@ -668,7 +669,10 @@ class Node(Starter):
                                 if asset_full_name in addr_origin_balance:
                                     asset_balance = addr_origin_balance.get(asset_full_name)
                                     if amount <= asset_balance:
+                                        TxHash_in, amount_equal = self.utxo_selection(
+                                            addr_origin_tx, amount, False, asset_full_name)
                                         asset_output_string += str(amount) + ' ' + asset_full_name + '+'
+                                        TxHash_in_asset += TxHash_in
                                         # mint_output_string += str(amount) + '+' + 
                                     else:
                                         raise Exception()
@@ -682,31 +686,35 @@ class Node(Starter):
                                 addr_output_array.append('--tx-out')
                                 addr_output_array.append(address_destin.get('address') + '+' + str(quantity) + '+' + asset_output_string + mint_output_string)
                             else:
+                                print(f"Quantity to send less than min_utxo_value of: {min_utxo_value}")
                                 raise Exception()
                         else:
                             min_utxo_value = self.min_utxo_lovelace1(
                              length_mint + length_assets, total_mint_name_len + total_asset_name_len, utxoCostPerWord, '')
-                            addr_output_array.append('--tx-out')
-                            addr_output_array.append(address_destin.get('address') + '+' + str(quantity) + mint_output_string)
+                            if quantity >= min_utxo_value:
+                                quantity_array.append(quantity)
+                                addr_output_array.append('--tx-out')
+                                addr_output_array.append(address_destin.get('address') + '+' + str(quantity) + mint_output_string)
+                            else:
+                                print(f"Quantity to send less than min_utxo_value of: {min_utxo_value}")
+                                raise Exception()
                             # addr_output_array.append('--tx-out')
                             # addr_output_array.append(address_origin + '+' + str(min_utxo_value) + '+' + mint_output_string)
                         # addr_output_array.append(address_full_string)
                 else:
+                    min_utxo_value = self.min_utxo_lovelace1(
+                        length_mint + length_assets, total_mint_name_len + total_asset_name_len, utxoCostPerWord, '')
                     addr_output_array.append('--tx-out')
                     addr_output_array.append(address_origin + '+' + str(min_utxo_value) + mint_output_string)
-                # min_utxo_value = self.min_utxo_lovelace1(
-                #     length_mint + length_assets, total_mint_name_len + total_asset_name_len, utxoCostPerWord, '')
-                # addr_output_array.append('--tx-out')
-                # addr_output_array.append(address_origin + '+' + str(min_utxo_value) + '+' + mint_output_string)
 
                 addr_output_array.append('--change-address')
                 addr_output_array.append(change_address)
 
                 target_calculated = sum(quantity_array)
                 deplete = False
-                addr_origin_tx = self.get_transactions(address_origin)
                 TxHash_in, amount_equal = self.utxo_selection(
-                    addr_origin_tx, target_calculated, deplete)
+                    addr_origin_tx, target_calculated, deplete, 'lovelace')
+                TxHash_in = TxHash_in + TxHash_in_asset
                 command_string = [
                     self.CARDANO_CLI_PATH,
                     'transaction', 'build',
