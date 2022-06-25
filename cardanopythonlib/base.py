@@ -9,7 +9,7 @@ import os
 import random
 import subprocess
 from base64 import b16encode
-from itertools import groupby
+from itertools import groupby, chain
 from operator import itemgetter
 from cerberus import Validator
 
@@ -327,7 +327,9 @@ class Node(Starter):
             _type_: list of utxos to build the transaction
         """
         # Applying the coin selection algorithm
-        minUTXO = 1000000
+        minCost = 0
+        if coin_name == 'lovelace':
+            minCost = 1000000
         TxHash = []
         TxHash_lower = []
         amount_lower = []
@@ -340,37 +342,37 @@ class Node(Starter):
                 for amount in utxo.get('amounts'):
                     if amount.get('token') == coin_name:
                         if deplete:
-                            TxHash.append('--tx-in')
+                            # TxHash.append('--tx-in')
                             TxHash.append([utxo.get('hash') + '#' + utxo.get('id')])
                             amount_equal += int(amount.get('amount'))
                             utxo_found = True
                             break
-                        if int(amount.get('amount')) == quantity:
-                            TxHash.append('--tx-in')
+                        if int(amount.get('amount')) == quantity + minCost:
+                            # TxHash.append('--tx-in')
                             TxHash.append(utxo.get('hash') + '#' + utxo.get('id'))
                             amount_equal = int(amount.get('amount'))
                             utxo_found = True
                             break
-                        elif int(amount.get('amount')) < quantity + minUTXO:
+                        elif int(amount.get('amount')) < quantity + minCost:
                             TxHash_lower.append(utxo.get('hash') + '#' + utxo.get('id'))
                             amount_lower.append(int(amount.get('amount')))
-                        elif int(amount.get('amount')) > quantity + minUTXO:
+                        elif int(amount.get('amount')) > quantity + minCost:
                             TxHash_greater.append(utxo.get('hash') + '#' + utxo.get('id'))
                             amount_greater.append(int(amount.get('amount')))
 
             if not utxo_found:
-                if sum(amount_lower) == quantity:
-                    TxHash.append('--tx-in')
+                if sum(amount_lower) == quantity + minCost:
+                    # TxHash.append('--tx-in')
                     TxHash.append(TxHash_lower)
                     amount_equal = sum(amount_lower)
-                elif sum(amount_lower) < quantity:
+                elif sum(amount_lower) < quantity + minCost:
                     if amount_greater == []:
                         TxHash = []
                         amount_equal = 0
                     amount_equal = min(amount_greater)
                     index = [i for i, j in enumerate(
                         amount_greater) if j == amount_equal][0]
-                    TxHash.append('--tx-in')
+                    # TxHash.append('--tx-in')
                     TxHash.append(TxHash_greater[index])
                 else:
                     utxo_array = []
@@ -378,12 +380,12 @@ class Node(Starter):
                     for _ in range(999):
                         index_random = random.randint(0, len(addr_origin_tx) - 1)
                         utxo = addr_origin_tx.pop(index_random)
-                        utxo_array.append('--tx-in')
+                        # utxo_array.append('--tx-in')
                         utxo_array.append(utxo.get('hash') + '#' + utxo.get('id'))
                         for amount in utxo.get('amounts'):
                             if amount.get('token') == coin_name:
                                 amount_array.append(int(amount.get('amount')))
-                        if sum(amount_array) >= quantity + minUTXO:
+                        if sum(amount_array) >= quantity + minCost:
                             amount_equal = sum(amount_array)
                             break
                     TxHash = utxo_array
@@ -662,6 +664,7 @@ class Node(Starter):
                             for asset in address_destin.get('assets'):
                                 asset_name = asset.get('asset_name').encode('utf-8')
                                 asset_name = b16encode(asset_name).decode('utf-8')
+                                asset_name = asset_name.lower()
                                 total_asset_name_len += len(asset_name)
                                 amount = asset.get('amount')
                                 policyID = asset.get('policyID')
@@ -677,6 +680,7 @@ class Node(Starter):
                                     else:
                                         raise Exception()
                                 else:
+                                    print(f"{asset_full_name} could not be found in wallet origin")
                                     raise Exception()
                             asset_output_string = asset_output_string[:-1]
                             min_utxo_value = self.min_utxo_lovelace1(
@@ -715,6 +719,10 @@ class Node(Starter):
                 TxHash_in, amount_equal = self.utxo_selection(
                     addr_origin_tx, target_calculated, deplete, 'lovelace')
                 TxHash_in = TxHash_in + TxHash_in_asset
+                TxHash_in = list(set(TxHash_in)) # remove utxo duplicates
+                tx_in = len(TxHash_in) * ['--tx-in']
+                TxHash_in = list(chain(*zip(tx_in, TxHash_in))) # Intercalate elements
+
                 command_string = [
                     self.CARDANO_CLI_PATH,
                     'transaction', 'build',

@@ -72,3 +72,4 @@ venv.bak/
 
 #Cardano
 .priv
+main.py

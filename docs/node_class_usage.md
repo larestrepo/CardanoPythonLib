@@ -94,40 +94,49 @@ Build any kind of transaction packing the components in a json format.
 The params must be built following some minimum rules:
 
 ```json
- schema = {
-                'address_origin': {
-                    'type': 'string',
-                    'required': True,
+schema = {
+                "address_origin": {
+                    "type": "string",
+                    "required": True,
                 },
-                'address_destin': {
-                    'type': 'list',
-                    'nullable': True,
-                    'schema':{ 'type': 'dict', 'schema':{
-                        'address': {'type': 'string', 'required': True},
-                        'amount': {'type': 'dict', 'required': True, 'schema': {'quantity': {'type': 'integer', 'required': True}, 'unit': {'type': 'string'}}},
-                        'assets': {'type': 'dict', 'nullable': True}
-                    }
-                    }
+                "address_destin": {
+                    "type": "list",
+                    "nullable": True,
+                    "schema":{ "type": "dict", "schema":{
+                        "address": {"type": "string", "required": True},
+                        "amount": {"type": "dict", "required": True, "schema": {"quantity": {"type": "integer", "required": True}, "unit": {"type": "string", "allowed": ["lovelace", "ada"]}}},
+                        "assets": {"type": "list", "nullable": True, 
+                            "schema": {"type": "dict", "schema":{"asset_name": {"type": "string", "required": True}, "amount": {"type": "integer", "required": True}, "policyID": {"type": "string", "required": True}}}}
+                }}},
+                "change_address": {
+                    "type": "string",
+                    "required": True,
                 },
-                'change_address': {
-                    'type': 'string',
-                    'required': True,
+                "metadata": {
+                    "type": "dict",
+                    "nullable": True,
                 },
-                'metadata': {
-                    'type': 'dict',
-                    'nullable': True,
+                "mint": {
+                    "type": "dict",
+                    "nullable": True,
+                    "schema": {
+                    "policyID": {"type": "string", "required": True},
+                    "policy_path": {"type": "string", "required": True},
+                    "tokens": {"type": "list", "schema":{ "type": "dict",
+                        "schema":{
+                        "name": {"type": "string", "required": True},
+                        "amount": {"type": "integer", "required": True},
+                        }
+                        }
+                    }}
                 },
-                'mint': {
-                    'type': 'dict',
-                    'nullable': True,
+                "script_path": {
+                    "type": "string",
+                    "nullable": True,
                 },
-                'script_path': {
-                    'type': 'string',
-                    'nullable': True,
-                },
-                'witness': {
-                    'type': 'integer',
-                    'required': True,
+                "witness": {
+                    "type": "integer",
+                    "required": True,
                 },
         }
 ```
@@ -333,7 +342,7 @@ To send to different addresses use the field address_destin as a list of address
 from cardanopythonlib import base
 node = base.Node()
 address_origin ='addr_test1qp3hc694xtngj6vt4kgxppqz5807kxyy737l4s7n35vmhgrjkcctzvtrmt0chuqgaphal08kaqhn0gn295v7wefe95eqh3m3q7'
-metadata = metadata = {"1337": {
+metadata = {"1337": {
         "name": "hello world",
         "completed": 0
     }}
@@ -349,6 +358,99 @@ address_destin = [
             "amount": 4575122544123,
             "policyID": "ae6498eeb6f7f7bdd3b411c7d3bdf0dfd29f6b989382f9bdb1279638"
           },
+        },
+      ]
+witness = 1
+params = {
+    "message": {
+        "tx_info": {
+            "address_origin": address_origin,
+            "address_destin": address_destin,
+            "change_address": address_origin,
+            "metadata": metadata,
+            "mint": None,
+            "script_path": None,
+            "witness": witness,
+        }
+    }
+}
+
+result = node.build_tx_components(params)
+```
+The result is:
+
+    ['cardano-cli', 'transaction', 'build', '--tx-in', '71c979e89fdb6930af4369d8c6315aa626e9197c37268899573d9026add69626#0', '--tx-in', 'b31bb6acaec9eb167e034cc2b8f2fca205211174cd1f721f10f217aa90efaf6d#1', '--tx-out', 'addr_test1qr2ac9vl2epy3yjynkqyfuskx6wp6ld70579v3s6wknve3rjkcctzvtrmt0chuqgaphal08kaqhn0gn295v7wefe95eqvl97xq+3000000+4575122544123 ae6498eeb6f7f7bdd3b411c7d3bdf0dfd29f6b989382f9bdb1279638.50727565626134', '--change-address', 'addr_test1vqrfdj8fkzs0pxg0eu4p38apgd430stz5hafx7pnsxn0ccg4jqkyd', '--testnet-magic', '1097911063', '--witness-override', '1', '--out-file', './.priv/transactions/tx.draft']
+    Estimated transaction fee: Lovelace 170737
+
+    ################################
+
+    Sign transaction file stored in './.priv/transactions/tx.signed'
+    Transaction successfully submitted.
+
+
+6. Transaction sending all combinations (More assets)
+To send to different addresses use the field address_destin as a list of address following the specified format.
+To send to multiple assets use the field inside address_destin.assets as a list of tokens available to send from the source address. 
+
+> **Warning:** There is well known limitation in the "cardano-cli build" command with the use of the --change-address option. The change-address was created to simplify the balance calculation of the transaction meaning that all the remaining inputs not specified in the tx-out are going to the change address. This works only for ADA. It means that it does not calculate the balance to the change address when there is non-ADA assets involved in the transaction unless the entire asset is taken out from the utxo. So you cannot partially send assets to an address and expect that the remaining goes to the change-address. Instead you need to specify the change address as a --tx-out and make the balance calculation by hand, defeating the purpose of the change address.
+
+[Link to the open issue at IOG repo](https://github.com/input-output-hk/cardano-node/issues/3068#issuecomment-1165994766)
+
+In below example, the balance of the origin wallet is:
+
+                            TxHash                                 TxIx        Amount
+    --------------------------------------------------------------------------------------
+    7aea86560538676f14b845aa7902576e97bbd4fc62a3999fae3d39537c188bc3     0        2379258 lovelace + 123 1f4df2e4cb4c94705bed1312646d95c9b0f4ec342445619c65593601.74657374746f6b656e7332 + 40 205a5880aebba0d1e330bb652114e3baea52542d4c0cb2defe26d5c9.74657374746f6b656e + 1 76277a33f1f3f12846c6aea8347e83fc6d7a0c0b8932139e9a7fb6e3.66726964617931303032 + 1 7dd0bce9e78cb528ecde1bfd95d8b076b1bbc43436b5437a1e43ab3c.6d6970727565626133 + 1 df3aaea99062110b5ebafe3a5054104561ea379c5039f4313b8e7222.6d6970727565626133 + 47 ea3f8733d3fdf9b1b1efb5ed8559d337e46ef2b6a6f496e01f33c271.6d69707275656261 + TxOutDatumNone
+    93f061187958ab6b525d0691d70b7f85db6fabf9ee642b9df5e61f317ef08cc8     0        36191237 lovelace + TxOutDatumNone
+    d17418bf6d1339052756a2e016f25cb4fb61b8593892964c020ef71191132bf7     0        1344798 lovelace + 1 37aae87eb8526a0a3cc7f98386e50b7722b4263a2c33033112f3daa0.667269646179 + TxOutDatumNone
+
+Notice that there are utxos with multiple assets. Currently the library is able to move these assets only if they are completely spent from the utxo (No partial balances). 
+
+<b>Once this limitation is resolved at IOG level, this library would be updated.</b> 
+
+```python
+from cardanopythonlib import base
+node = base.Node()
+address_origin ='addr_test1qp3hc694xtngj6vt4kgxppqz5807kxyy737l4s7n35vmhgrjkcctzvtrmt0chuqgaphal08kaqhn0gn295v7wefe95eqh3m3q7'
+metadata = {"1337": {
+        "name": "hello world",
+        "completed": 0
+    }}
+address_destin = [
+        {
+          "address": "addr_test1qr2ac9vl2epy3yjynkqyfuskx6wp6ld70579v3s6wknve3rjkcctzvtrmt0chuqgaphal08kaqhn0gn295v7wefe95eqvl97xq",
+          "amount": {
+                "quantity": 1586172,
+                "unit": "lovelace"
+            },
+            "assets": [
+                {
+                    "asset_name": "testtokens2",
+                    "amount": 123,
+                    "policyID": "1f4df2e4cb4c94705bed1312646d95c9b0f4ec342445619c65593601"
+                },
+                {
+                    "asset_name": "testtoken",
+                    "amount": 40,
+                    "policyID": "205a5880aebba0d1e330bb652114e3baea52542d4c0cb2defe26d5c9"
+                },
+                {
+                    "asset_name": "miprueba3",
+                    "amount": 1,
+                    "policyID": "7dd0bce9e78cb528ecde1bfd95d8b076b1bbc43436b5437a1e43ab3c"
+                },
+                {
+                    "asset_name": "miprueba3",
+                    "amount": 1,
+                    "policyID": "df3aaea99062110b5ebafe3a5054104561ea379c5039f4313b8e7222"
+                },
+                {
+                    "asset_name": "miprueba",
+                    "amount": 47,
+                    "policyID": "ea3f8733d3fdf9b1b1efb5ed8559d337e46ef2b6a6f496e01f33c271"
+                }
+            ]
+         
         },
       ]
 witness = 1

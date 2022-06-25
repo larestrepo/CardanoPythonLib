@@ -35,7 +35,6 @@ class TestLibrary (unittest.TestCase):
     
     def test_env_variables_value(self):
         
-        CARDANO_NETWORK_MAGIC = self.starter.CARDANO_NETWORK_MAGIC
         CARDANO_CLI_PATH = self.starter.CARDANO_CLI_PATH
         CARDANO_NETWORK = self.starter.CARDANO_NETWORK
         TRANSACTION_PATH_FILE = self.starter.TRANSACTION_PATH_FILE
@@ -43,8 +42,6 @@ class TestLibrary (unittest.TestCase):
         URL = self.starter.URL
         
         self.assertEqual(CARDANO_CLI_PATH.upper(), 'CARDANO-CLI')
-        if CARDANO_NETWORK_MAGIC != '' or None:
-            self.assertEqual(CARDANO_NETWORK_MAGIC, 1097911063)
         network_list = ['testnet', 'mainnet']
         self.assertIn(CARDANO_NETWORK, network_list, f"Cardano_network param should be one of those: {network_list}")
         self.assertNotEqual(TRANSACTION_PATH_FILE, '', f"Transaction_path_file should not be empty")
@@ -102,6 +99,7 @@ class TestLibrary (unittest.TestCase):
         self.assertTrue(key['base_addr_path'].startswith('addr'), "Problem with base_addr_path")
         self.assertEqual(len(key['hash_verification_key']), 56, "Problem with hash_verification_key")
         remove_folder("./.priv/wallets/" + wallet_name)
+
 
 if __name__ == '__main__':
     unittest.main()

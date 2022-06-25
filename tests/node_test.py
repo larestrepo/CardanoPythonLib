@@ -16,12 +16,6 @@ class TestLibrary (unittest.TestCase):
     #####################################
     # This is the start of the section to test Starter class and Keys class
     #####################################
-
-    def test_check_if_cardano_cli(self):
-        command_string = ['cardano-cli', '--version']
-        result = self.starter.execute_command(command_string, None)
-        cardano_version = result.split(' ')
-        self.assertEqual(cardano_version[0], 'cardano-cli', "Could not find cardano cli")
     
     def test_query_tip_exec(self):
         tip = self.node.query_tip_exec()
@@ -35,8 +29,8 @@ class TestLibrary (unittest.TestCase):
         self.assertEqual(protocol, '', "problems with the command execution, check that cardano cli and cardano node are properly configured")
         protocol_file = saving_path + '/protocol.json'
         file_exists = os.path.exists(protocol_file)
-        self.assertTrue(file_exists, f"problems generating the protocol params file from query_protocol function")
         remove_file(saving_path, '/protocol.json')
+        self.assertTrue(file_exists, f"problems generating the protocol params file from query_protocol function")
 
     def test_get_transactions(self):
         CARDANO_NETWORK = self.starter.CARDANO_NETWORK
@@ -86,18 +80,35 @@ class TestLibrary (unittest.TestCase):
             self.assertEqual(len(multisig_script['scripts']), len(hashes), "Review that the number of wallets corresponds")
 
             policyID = self.node.create_policy_id(script_name)
-            self.assertEqual(len(policyID.split(' ')), 1, f"Verify the existence of the script file")
             keys_file_path = self.starter.KEYS_FILE_PATH + '/' + script_name
             file_exists = os.path.exists(keys_file_path)
+            remove_folder("./.priv/wallets/" + script_name)
+            self.assertEqual(len(policyID.split(' ')), 1, f"Verify the existence of the script file")
             self.assertTrue(file_exists, f"Verify the creation of the policy script file in {keys_file_path}")
             self.assertEqual(len(policyID), 56, "Problem with the generation of the PolicyID")
         except AssertionError:
             print(f"Verify your required field")
-        remove_folder("./.priv/wallets/" + script_name)
 
     def test_build_tx_components(self):
-        tx_file_path = self.starter.TRANSACTION_PATH_FILE + '/tx.draft'
+        tx_file_path = self.starter.TRANSACTION_PATH_FILE
+        remove_file(tx_file_path, '/tx.draft')
+        address_origin ='addr_test1vqrfdj8fkzs0pxg0eu4p38apgd430stz5hafx7pnsxn0ccg4jqkyd'
+        params = {
+            "message": {
+                "tx_info": {
+                    "address_origin": address_origin,
+                    "address_destin": None,
+                    "change_address": address_origin,
+                    "metadata": None,
+                    "mint": None,
+                    "script_path": None,
+                    "witness": 1,
+                }
+            }
+        }
+        result = self.node.build_tx_components(params)
         file_exists = os.path.exists(tx_file_path)
+        remove_file(tx_file_path, '/tx.draft')
         self.assertTrue(file_exists, f"Verify the creation of the transaction draft file in {tx_file_path}")
 
 if __name__ == '__main__':
