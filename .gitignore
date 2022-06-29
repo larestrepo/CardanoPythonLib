@@ -67,10 +67,9 @@ ENV/
 env.bak/
 venv.bak/
 
-# VScode
-.vscode
 
 #My files
 
 #Cardano
 .priv
+main.py

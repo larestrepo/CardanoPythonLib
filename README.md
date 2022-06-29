@@ -8,11 +8,11 @@
 
 1. Prerequesites
 
-- Minimum: Cardano-cli and Cardano Wallet installed. You will be able to run offchain code, generate keys, create and sign transactions.
+- Minimum: Cardano-cli, Cardano Wallet and Cardano Address installed. You will be able to run offchain code, generate keys, create and sign transactions.
 - Desired: Cardano-node running. You will be able to submit onchain and get confirmations from the blockchain.
 - Unlock more: Cardano wallet installed. You will be able to create wallets using the Cardano Wallet API.
 
-> As a side note, we are working to allow the interaction of this library with the Cardano blockchain without the need of any cardano node or even cardano CLI installed locally.
+> As a side note, we are working to allow the interaction of this library with the Cardano blockchain without the need of any cardano node or even cardano CLI/wallet/address installed locally.
 
 2. Virtual environment setup
 As you might know, it is recommended to run python code from a virtual environment to isolate your installation and keep everything clean and organized. 
