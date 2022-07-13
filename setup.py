@@ -8,7 +8,7 @@ HERE = pathlib.Path(__file__).parent
 
 long_description = (HERE / 'README.md').read_text(encoding='utf-8')
 
-_VERSION = '0.1'
+_VERSION = '1.0.0'
 
 setuptools.setup(
     name='cardanopythonlib',
