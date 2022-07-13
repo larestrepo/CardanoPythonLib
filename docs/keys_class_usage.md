@@ -65,7 +65,7 @@ from cardanopythonlib import base
 keys = base.Keys()
 wallet_name = 'wallet01'
 mnemonic = ['dial','ivory','leave','fog','boring','nose','brass','food','kitchen','example','fame','expire','apart','game','pipe','ship','excite','sponsor','bread','place','beach','raven','prevent','stem']
-key.deriveAllKeys(wallet_name, words= mnemonic)
+keys.deriveAllKeys(wallet_name, words= mnemonic)
 ```
 
 You can take a backup and delete the folder. Store your keys in a private location. This library does not keep any log or backup.

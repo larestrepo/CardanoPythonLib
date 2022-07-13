@@ -779,7 +779,6 @@ class Node(Starter):
         except Exception:
             print(f"Errors while building the transaction. Probably insufficient ada or native asset funds")
 
-
     def analyze_tx(self, tx_name_file):
         print('Analyzing the transaction....')
         command_string = [
