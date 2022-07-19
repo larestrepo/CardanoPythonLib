@@ -33,4 +33,4 @@ setuptools.setup(
     test_suite="tests",
     setup_requires=setup_requires,
     include_package_data=True,
-    install_requires=["setuptools"])
+    install_requires=["setuptools","Cerberus"])
