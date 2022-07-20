@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 from typing import Union
 import json
+from configparser import ConfigParser
 
 
 def get_root_path() -> str:
@@ -207,3 +208,19 @@ def save_metadata(path, name, metadata):
         metadata_json_file = path + '/' + name
 
     return metadata_json_file
+
+def config(config_path, section='node'):
+    # create a parser
+    parser=ConfigParser()
+    # read config file
+    parser.read(config_path)
+    if parser.has_section(section):
+        items = parser.items(section)
+        params = {}
+        for item in items:
+            params[item[0]] =item[1]
+
+    else:
+        raise Exception('Section {0} not found in the {1} file'.format(section,config_path))
+    
+    return params

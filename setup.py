@@ -1,12 +1,26 @@
 import setuptools
 import pathlib
 import sys
+import codecs
+import os.path
 
 HERE = pathlib.Path(__file__).parent
 
 long_description = (HERE / 'README.md').read_text(encoding='utf-8')
 
-_VERSION = '1.0.1'
+
+def read(rel_path):
+    here = os.path.abspath(os.path.dirname(__file__))
+    with codecs.open(os.path.join(here, rel_path), 'r') as fp:
+        return fp.read()
+
+def get_version(rel_path):
+    for line in read(rel_path).splitlines():
+        if line.startswith('__version__'):
+            delim = '"' if '"' in line else "'"
+            return line.split(delim)[1]
+    else:
+        raise RuntimeError("Unable to find version string.")
 
 setup_requires = (
     ["pytest-runner"] if any(x in sys.argv for x in ("pytest", "test", "ptr")) else []
@@ -14,7 +28,7 @@ setup_requires = (
 
 setuptools.setup(
     name='cardanopythonlib',
-    version=_VERSION,
+    version=get_version("cardanopythonlib/__init__.py"),
     description='Cardano Python lib to interact with the blockchain',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -33,4 +47,4 @@ setuptools.setup(
     test_suite="tests",
     setup_requires=setup_requires,
     include_package_data=True,
-    install_requires=["setuptools","Cerberus"])
+    install_requires=['setuptools','Cerberus==1.3.4'])

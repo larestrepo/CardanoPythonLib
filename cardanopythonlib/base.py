@@ -14,11 +14,10 @@ from operator import itemgetter
 from cerberus import Validator
 
 # Module Imports
-from cardanopythonlib.data_utils import load_configs, parse_inputs
-from cardanopythonlib.path_utils import create_folder, save_file, remove_file, save_metadata
+from cardanopythonlib.path_utils import create_folder, save_file, remove_file, save_metadata, config
 
-WORKING_DIR = os.getcwd()
-CARDANO_CONFIGS = f'{WORKING_DIR}/config/cardano_config.json'
+# WORKING_DIR = os.getcwd()
+# CARDANO_CONFIGS = f'{WORKING_DIR}/config/cardano_config.json'
 
 
 class Starter():
@@ -36,21 +35,23 @@ class Starter():
         system needs.
     """
 
-    def __init__(self, config_path):
-        params = load_configs(config_path, False)
+    def __init__(self, config_path='./cardanopythonlib/config/cardano_config.ini'):
+        params=config(config_path)
+        # with open(config_path) as file:
+        #     params=json.load(file)
         if params is not None:
-            self.CARDANO_NETWORK_MAGIC = params['node']['CARDANO_NETWORK_MAGIC']
-            self.CARDANO_CLI_PATH = params['node']['CARDANO_CLI_PATH']
-            self.CARDANO_NETWORK = params['node']['CARDANO_NETWORK']
-            self.TRANSACTION_PATH_FILE = params['node']['TRANSACTION_PATH_FILE']
-            self.KEYS_FILE_PATH = params['node']['KEYS_FILE_PATH']
-            self.URL = params['node']['URL']
+            self.CARDANO_NETWORK_MAGIC = params.get('cardano_network_magic')
+            self.CARDANO_CLI_PATH = params.get('cardano_cli_path')
+            self.CARDANO_NETWORK = params.get('cardano_network')
+            self.TRANSACTION_PATH_FILE = str(params.get('transaction_path_file'))
+            self.KEYS_FILE_PATH = str(params.get('keys_file_path'))
+            self.URL = params.get('url')
+            if not os.path.exists(self.TRANSACTION_PATH_FILE):
+                os.makedirs(self.TRANSACTION_PATH_FILE)
+            if not os.path.exists(self.KEYS_FILE_PATH):
+                os.makedirs(self.KEYS_FILE_PATH, exist_ok=True)
         else:
             print('Problems loading the cardano_config file')
-        if not os.path.exists(self.TRANSACTION_PATH_FILE):
-            os.makedirs(self.TRANSACTION_PATH_FILE)
-        if not os.path.exists(self.KEYS_FILE_PATH):
-            os.makedirs(self.KEYS_FILE_PATH, exist_ok=True)
 
     def insert_command(self, index, step, command_string, opt_commands):
         """
@@ -142,8 +143,8 @@ class Node(Starter):
     Class using primarly Cardano CLI commands
     """
 
-    def __init__(self, config_path=CARDANO_CONFIGS):
-        super().__init__(config_path=config_path)
+    def __init__(self, config_path='./cardanopythonlib/config/cardano_config.ini'):
+        super().__init__(config_path)
 
     def id_to_address(self, wallet_name):
         """Get payment address stored locally from wallet_name; if address is
@@ -823,8 +824,8 @@ class Node(Starter):
         return(rawResult)
 
 class Keys(Starter):
-    def __init__(self, config_path=CARDANO_CONFIGS):
-        super().__init__(config_path=config_path)
+    def __init__(self, config_path='./cardanopythonlib/config/cardano_config.ini'):
+        super().__init__(config_path)
         self.path = self.KEYS_FILE_PATH
         self.cardano_network = self.CARDANO_NETWORK
         self.cardano_network_magic = self.CARDANO_NETWORK_MAGIC

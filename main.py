@@ -1,8 +1,12 @@
 from cardanopythonlib import base
 
-keys = base.Keys()
+starter = base.Starter()
+print(starter.CARDANO_CLI_PATH)
 
-# Option 1
+# config_path = './config/cardano_config.ini'
+# keys = base.Keys()
+
+# # Option 1
 
 # wallet_name = 'receiving'
 # nmemonic_size = 24
@@ -13,7 +17,8 @@ keys = base.Keys()
 node = base.Node()
 node.KEYS_FILE_PATH
 wallet_id = 'wallet01'
-# node.get_transactions(wallet_id)
+print(node.query_tip_exec())
+node.get_transactions(wallet_id)
 # print(node.analyze_tx('tx.draft'))
 
 # hash= keys.keyHashing(wallet_id)

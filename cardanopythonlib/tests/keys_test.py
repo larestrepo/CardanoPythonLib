@@ -1,37 +1,35 @@
 import unittest
 import os
 import json
-from cardanopythonlib.path_utils import remove_folder
+from cardanopythonlib.path_utils import remove_folder, config
 import uuid
 
 from cardanopythonlib import base
 
 class TestLibrary (unittest.TestCase):
     def setUp(self):
-        self.WORKING_DIR = os.getcwd()
-        self.CARDANO_CONFIGS = f'{self.WORKING_DIR}/config/cardano_config.json'
-        self.starter = base.Starter(self.CARDANO_CONFIGS)
+        self.config_path = './config/cardano_config.ini'
+        self.starter = base.Starter(self.config_path)
 
     #####################################
     # This is the start of the section to test Starter class and Keys class
     #####################################
     def test_cardano_config_json_existence(self):
-        file_exists = os.path.exists(self.CARDANO_CONFIGS)
-        self.assertTrue(file_exists, f"config file does not exists in {self.CARDANO_CONFIGS}")
+        file_exists = os.path.exists(self.config_path)
+        self.assertTrue(file_exists, f"config file does not exists in {self.config_path}")
 
     def test_env_variables_existence(self):
-        with open(self.CARDANO_CONFIGS) as file:
-            from_json = json.load(file)
         keys_list = [
-            'CARDANO_NETWORK_MAGIC',
-            'CARDANO_CLI_PATH',
-            'CARDANO_NETWORK',
-            'TRANSACTION_PATH_FILE',
-            'KEYS_FILE_PATH',
-            'URL'
+            'cardano_network_magic',
+            'cardano_cli_path',
+            'cardano_network',
+            'transaction_path_file',
+            'keys_file_path',
+            'url'
         ]
-        for key in from_json['node'].keys():
-            self.assertIn(key, keys_list, f"Missing key: {key}")
+        params=config(self.config_path)
+        for key in params.keys():
+            self.assertIn(key, keys_list, f"Missing value: {key}")
     
     def test_env_variables_value(self):
         
@@ -41,7 +39,9 @@ class TestLibrary (unittest.TestCase):
         KEYS_FILE_PATH = self.starter.KEYS_FILE_PATH
         URL = self.starter.URL
         
-        self.assertEqual(CARDANO_CLI_PATH.upper(), 'CARDANO-CLI')
+        self.assertNotEqual(CARDANO_CLI_PATH, '', f"cardano_cli should not be empty")
+        if CARDANO_CLI_PATH is not None:
+            self.assertEqual(CARDANO_CLI_PATH.upper(), 'CARDANO-CLI')
         network_list = ['testnet', 'mainnet']
         self.assertIn(CARDANO_NETWORK, network_list, f"Cardano_network param should be one of those: {network_list}")
         self.assertNotEqual(TRANSACTION_PATH_FILE, '', f"Transaction_path_file should not be empty")
