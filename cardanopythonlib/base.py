@@ -16,9 +16,8 @@ from cerberus import Validator
 # Module Imports
 from cardanopythonlib.path_utils import create_folder, save_file, remove_file, save_metadata, config
 
-# WORKING_DIR = os.getcwd()
-# CARDANO_CONFIGS = f'{WORKING_DIR}/config/cardano_config.json'
-
+WORKING_DIR = os.path.dirname(__file__)
+CARDANO_CONFIGS = f'{WORKING_DIR}/config/cardano_config.ini'
 
 class Starter():
 
@@ -35,7 +34,7 @@ class Starter():
         system needs.
     """
 
-    def __init__(self, config_path='./cardanopythonlib/config/cardano_config.ini'):
+    def __init__(self, config_path=CARDANO_CONFIGS):
         params=config(config_path)
         # with open(config_path) as file:
         #     params=json.load(file)
@@ -48,8 +47,13 @@ class Starter():
             self.URL = params.get('url')
             if not os.path.exists(self.TRANSACTION_PATH_FILE):
                 os.makedirs(self.TRANSACTION_PATH_FILE)
+                print(f"Creation of the transaction folder in: {self.TRANSACTION_PATH_FILE}")
             if not os.path.exists(self.KEYS_FILE_PATH):
                 os.makedirs(self.KEYS_FILE_PATH, exist_ok=True)
+                print(f"Creation of the keys folder in: {self.KEYS_FILE_PATH}")
+
+            print(f"Working on CARDANO_NETWORK: {self.CARDANO_NETWORK} with CARDANO_NETWORK_MAGIC: {self.CARDANO_NETWORK_MAGIC}")
+            print(f"If you are using cardano-wallet, this is the default internal url: {self.URL}")
         else:
             print('Problems loading the cardano_config file')
 
@@ -143,7 +147,7 @@ class Node(Starter):
     Class using primarly Cardano CLI commands
     """
 
-    def __init__(self, config_path='./cardanopythonlib/config/cardano_config.ini'):
+    def __init__(self, config_path=CARDANO_CONFIGS):
         super().__init__(config_path)
 
     def id_to_address(self, wallet_name):
@@ -824,7 +828,7 @@ class Node(Starter):
         return(rawResult)
 
 class Keys(Starter):
-    def __init__(self, config_path='./cardanopythonlib/config/cardano_config.ini'):
+    def __init__(self, config_path=CARDANO_CONFIGS):
         super().__init__(config_path)
         self.path = self.KEYS_FILE_PATH
         self.cardano_network = self.CARDANO_NETWORK

@@ -47,4 +47,7 @@ setuptools.setup(
     test_suite="tests",
     setup_requires=setup_requires,
     include_package_data=True,
+    package_data = {
+        '': ['*.ini'],
+    },
     install_requires=['setuptools','Cerberus==1.3.4'])
