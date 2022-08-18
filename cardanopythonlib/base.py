@@ -5,7 +5,7 @@ objects: Node and Wallet.
 
 # General Imports
 import json
-import os
+import os, sys
 import random
 import subprocess
 from base64 import b16encode
@@ -14,9 +14,10 @@ from operator import itemgetter
 from cerberus import Validator
 
 # Module Imports
+WORKING_DIR = os.path.dirname(__file__)
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'cardanopythonlib'))
 from cardanopythonlib.path_utils import create_folder, save_file, remove_file, save_metadata, config
 
-WORKING_DIR = os.path.dirname(__file__)
 CARDANO_CONFIGS = f'{WORKING_DIR}/config/cardano_config.ini'
 
 class Starter():
