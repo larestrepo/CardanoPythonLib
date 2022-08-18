@@ -4,12 +4,13 @@ starter = base.Starter()
 print(starter.CARDANO_CLI_PATH)
 
 # config_path = './config/cardano_config.ini'
-# keys = base.Keys()
+keys = base.Keys()
 
 # # Option 1
 
 # wallet_name = 'receiving'
 # nmemonic_size = 24
+keys.generate_mnemonic()
 # keys.deriveAllKeys(wallet_name, size= nmemonic_size)
 
 

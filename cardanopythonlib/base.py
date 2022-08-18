@@ -306,7 +306,8 @@ class Node(Starter):
                     for k in value:
                         balance = balance + int(k['amount'])
                     balance_dict[key] = balance
-                    print(f'Total balance of "{key}" is "{balance}"')
+            print(f"Total balance of lovelace is : {balance_dict.get('lovelace')}")
+            print(f"Total balance of assets is : {balance_dict.get('assets')}")
         return balance_dict
 
     def utxo_selection(self, addr_origin_tx, quantity, deplete, coin_name):
@@ -835,7 +836,7 @@ class Keys(Starter):
         self.cardano_network = self.CARDANO_NETWORK
         self.cardano_network_magic = self.CARDANO_NETWORK_MAGIC
 
-    def generate_mnemonic(self, size=24, *args, **kwargs):
+    def generate_mnemonic(self, size=24):
         """Create mnemonic sentence (list of mnemonic words)
         Input: size number of words: 24 by default"""
         print('Executing Generate New Mnemonic Phrase')
