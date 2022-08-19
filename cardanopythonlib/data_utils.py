@@ -4,7 +4,7 @@ import logging.config
 from typing import Optional, Union
 import json
 # Module imports
-from . import path_utils
+import path_utils
 
 
 def getlogger(logger_name, level):
