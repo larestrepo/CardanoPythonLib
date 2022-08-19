@@ -1,7 +1,7 @@
 from cardanopythonlib import base
 
 starter = base.Starter()
-print(starter.CARDANO_CLI_PATH)
+# print(starter.CARDANO_CLI_PATH)
 
 # config_path = './config/cardano_config.ini'
 keys = base.Keys()

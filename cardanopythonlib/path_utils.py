@@ -209,7 +209,7 @@ def save_metadata(path, name, metadata):
 
     return metadata_json_file
 
-def config(config_path, section='node'):
+def config(config_path, section):
     # create a parser
     parser=ConfigParser()
     # read config file

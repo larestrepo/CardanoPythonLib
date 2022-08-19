@@ -1,10 +1,40 @@
 # General imports
 import logging
+import logging.config
 from typing import Optional, Union
 import json
-
 # Module imports
 from . import path_utils
+
+
+def getlogger(logger_name, level):
+    MY_LOGGING_CONFIG = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'default_formatter': {
+                'format': '[%(levelname)s:%(asctime)s %(name)s] %(message)s'
+            },
+        },
+        'handlers': {
+            'stream_handler': {
+                'class': 'logging.StreamHandler',
+                'formatter': 'default_formatter',
+            },
+        },
+        'loggers': {
+            logger_name: {
+                'handlers': ['stream_handler'],
+                'level': level,
+                'propagate': True
+            }
+        }
+    }
+
+    logging.config.dictConfig(MY_LOGGING_CONFIG)
+    logger = logging.getLogger(logger_name)
+    return logger
+    # logger.info('info log')
 
 
 def check_nested_dicts(vals: dict):

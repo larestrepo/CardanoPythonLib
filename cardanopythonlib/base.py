@@ -17,6 +17,7 @@ from cerberus import Validator
 WORKING_DIR = os.path.dirname(__file__)
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'cardanopythonlib'))
 from cardanopythonlib.path_utils import create_folder, save_file, remove_file, save_metadata, config
+from cardanopythonlib.data_utils import getlogger
 
 CARDANO_CONFIGS = f'{WORKING_DIR}/config/cardano_config.ini'
 
@@ -36,13 +37,12 @@ class Starter():
     """
 
     def __init__(self, config_path=CARDANO_CONFIGS):
-        params=config(config_path)
-        # with open(config_path) as file:
-        #     params=json.load(file)
+        params=config(config_path,section='node')
         if params is not None:
             self.CARDANO_NETWORK_MAGIC = params.get('cardano_network_magic')
             self.CARDANO_CLI_PATH = params.get('cardano_cli_path')
             self.CARDANO_NETWORK = params.get('cardano_network')
+            self.CARDANO_ERA = params.get('cardano_era')
             self.TRANSACTION_PATH_FILE = str(params.get('transaction_path_file'))
             self.KEYS_FILE_PATH = str(params.get('keys_file_path'))
             self.URL = params.get('url')
@@ -52,9 +52,10 @@ class Starter():
             if not os.path.exists(self.KEYS_FILE_PATH):
                 os.makedirs(self.KEYS_FILE_PATH, exist_ok=True)
                 print(f"Creation of the keys folder in: {self.KEYS_FILE_PATH}")
-
-            print(f"Working on CARDANO_NETWORK: {self.CARDANO_NETWORK} with CARDANO_NETWORK_MAGIC: {self.CARDANO_NETWORK_MAGIC}")
-            print(f"If you are using cardano-wallet, this is the default internal url: {self.URL}")
+            params=config(config_path, section='logger')
+            self.LOGGER = getlogger(__name__, params.get('level'))
+            self.LOGGER.info(f"Working on CARDANO_NETWORK: {self.CARDANO_NETWORK} with CARDANO_NETWORK_MAGIC: {self.CARDANO_NETWORK_MAGIC}")
+            self.LOGGER.info(f"If you are using cardano-wallet, this is the default internal url: {self.URL}")
         else:
             print('Problems loading the cardano_config file')
 
@@ -78,7 +79,8 @@ class Starter():
         except Exception:
             rawResult = output.stderr.decode('utf-8')
 
-        print(rawResult)
+        # print(rawResult)
+        self.LOGGER.info(rawResult)
         return(rawResult)
 
     def validate_address(self, address: str) -> bool:
@@ -86,32 +88,12 @@ class Starter():
         Empty docstring
         """
         if not address.startswith('addr' or 'DdzFF'):
-            print(f"{address} is not a valid addresss")
+            self.LOGGER.info(f"{address} is not a valid addresss")
             return False
         else:
             return True
-
-    def min_utxo_lovelace(self, num_assets, total_asset_name_len, utxoCostPerWord, era):
-        ################################################
-        # minAda (u) = max (minUTxOValue, (quot (minUTxOValue, adaOnlyUTxOSize)) * (utxoEntrySizeWithoutVal + \
-        #               (size B)))
-
-        POLICYIDSize = 28
-        utxo_entry_size = 27
-        has_datum = False
-        num_policies = 1
-
-        byte_len = num_assets * 12 + total_asset_name_len + num_policies * POLICYIDSize
-        # print(byte_len)
-
-        b_size = 6 + (byte_len + 7) // 8
-        data_hash_size = 10 if has_datum else 0
-        finalized_size = utxo_entry_size + b_size + data_hash_size
-        minUTxOValue = finalized_size * utxoCostPerWord
-
-        return minUTxOValue
     
-    def min_utxo_lovelace1(self, num_assets, total_asset_name_len, utxoCostPerWord, era):
+    def min_utxo_lovelace(self, num_assets, total_asset_name_len, utxoCostPerWord, era):
 
         #///////////////////////////////////////////////////////
         # minAda (u) = max (minUTxOValue, (quot (minUTxOValue, adaOnlyUTxOSize)) * (utxoEntrySizeWithoutVal + (size B)))
@@ -610,7 +592,7 @@ class Node(Starter):
             self.query_protocol()
             with open(self.TRANSACTION_PATH_FILE + '/protocol.json', 'r') as file:
                 utxoCostPerWord = json.load(file).get('utxoCostPerWord')
-            # min_utxo_value = self.min_utxo_lovelace1(0, 0, utxoCostPerWord, '')
+            # min_utxo_value = self.min_utxo_lovelace(0, 0, utxoCostPerWord, '')
             # quantity_array = [min_utxo_value]
 
             addr_origin_balance = self.get_balance(address_origin)
@@ -644,7 +626,7 @@ class Node(Starter):
                     mint_string = '--mint='
                     mint_string = mint_string + mint_output_string
                     mint_output_string = '+' + mint_output_string
-                    # min_utxo_value = self.min_utxo_lovelace1(
+                    # min_utxo_value = self.min_utxo_lovelace(
                     #     len(mint.get('tokens')), total_asset_name_len, utxoCostPerWord, '')
                     # addr_output_array.append('--tx-out')
                     # addr_output_array.append(address_origin + '+' + str(min_utxo_value) + '+' + mint_output_string)
@@ -690,7 +672,7 @@ class Node(Starter):
                                     print(f"{asset_full_name} could not be found in wallet origin")
                                     raise Exception()
                             asset_output_string = asset_output_string[:-1]
-                            min_utxo_value = self.min_utxo_lovelace1(
+                            min_utxo_value = self.min_utxo_lovelace(
                                 length_mint + length_assets, total_mint_name_len + total_asset_name_len, utxoCostPerWord, '')
                             if quantity >= min_utxo_value:
                                 quantity_array.append(quantity)
@@ -700,7 +682,7 @@ class Node(Starter):
                                 print(f"Quantity to send less than min_utxo_value of: {min_utxo_value}")
                                 raise Exception()
                         else:
-                            min_utxo_value = self.min_utxo_lovelace1(
+                            min_utxo_value = self.min_utxo_lovelace(
                              length_mint + length_assets, total_mint_name_len + total_asset_name_len, utxoCostPerWord, '')
                             if quantity >= min_utxo_value:
                                 quantity_array.append(quantity)
@@ -713,7 +695,7 @@ class Node(Starter):
                             # addr_output_array.append(address_origin + '+' + str(min_utxo_value) + '+' + mint_output_string)
                         # addr_output_array.append(address_full_string)
                 else:
-                    min_utxo_value = self.min_utxo_lovelace1(
+                    min_utxo_value = self.min_utxo_lovelace(
                         length_mint + length_assets, total_mint_name_len + total_asset_name_len, utxoCostPerWord, '')
                     addr_output_array.append('--tx-out')
                     addr_output_array.append(address_origin + '+' + str(min_utxo_value) + mint_output_string)
