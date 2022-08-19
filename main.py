@@ -10,12 +10,13 @@ keys = base.Keys()
 
 # wallet_name = 'receiving'
 # nmemonic_size = 24
-keys.generate_mnemonic()
+# keys.generate_mnemonic()
 # keys.deriveAllKeys(wallet_name, size= nmemonic_size)
 
 
 # Building multisig script
 node = base.Node()
+# node.query_protocol()
 node.KEYS_FILE_PATH
 wallet_id = 'wallet01'
 print(node.query_tip_exec())

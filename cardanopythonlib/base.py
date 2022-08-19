@@ -124,7 +124,6 @@ class Starter():
         output = subprocess.Popen(command_string, stdout=subprocess.PIPE)
         return output
 
-
 class Node(Starter):
     """
     Class using primarly Cardano CLI commands
@@ -188,7 +187,10 @@ class Node(Starter):
 
         rawResult = self.execute_command(command_string, None)
         if rawResult == '':
-            print("Protocol parameters file stored in '%s'" % (protocol_file))
+            self.LOGGER.info(f"Protocol parameters file stored in {protocol_file}")
+        else:
+            self.LOGGER.error(f"Error executing command query protocol: {rawResult} {command_string}")
+            rawResult = None
         return(rawResult)
 
     def query_tip_exec(self):
@@ -209,6 +211,7 @@ class Node(Starter):
 
         rawResult = self.execute_command(command_string, None)
         rawResult = json.loads(rawResult)
+        self.LOGGER.info(rawResult)
         return rawResult
 
     def get_transactions(self, wallet_id):
@@ -254,6 +257,7 @@ class Node(Starter):
                     tr_amount['amount'] = trans[3 + i * 3 + 2]
                     transaction['amounts'].append(tr_amount)
                 token_transactions.append(transaction)
+        self.LOGGER.info(token_transactions)
         return token_transactions
 
     def get_balance(self, wallet_id):
@@ -288,8 +292,8 @@ class Node(Starter):
                     for k in value:
                         balance = balance + int(k['amount'])
                     balance_dict[key] = balance
-            print(f"Total balance of lovelace is : {balance_dict.get('lovelace')}")
-            print(f"Total balance of assets is : {balance_dict.get('assets')}")
+        self.LOGGER.info(f"Total balance of lovelace is : {balance_dict.get('lovelace')}")
+        self.LOGGER.info(f"Total balance of assets is : {balance_dict.get('assets')}")
         return balance_dict
 
     def utxo_selection(self, addr_origin_tx, quantity, deplete, coin_name):
@@ -361,7 +365,6 @@ class Node(Starter):
                     amount_equal = min(amount_greater)
                     index = [i for i, j in enumerate(
                         amount_greater) if j == amount_equal][0]
-                    # TxHash.append('--tx-in')
                     TxHash.append(TxHash_greater[index])
                 else:
                     utxo_array = []
@@ -369,7 +372,6 @@ class Node(Starter):
                     for _ in range(999):
                         index_random = random.randint(0, len(addr_origin_tx) - 1)
                         utxo = addr_origin_tx.pop(index_random)
-                        # utxo_array.append('--tx-in')
                         utxo_array.append(utxo.get('hash') + '#' + utxo.get('id'))
                         for amount in utxo.get('amounts'):
                             if amount.get('token') == coin_name:
@@ -378,9 +380,10 @@ class Node(Starter):
                             amount_equal = sum(amount_array)
                             break
                     TxHash = utxo_array
-
+            self.LOGGER.info(f"{TxHash}, {amount_equal}")
             return TxHash, amount_equal
         else:
+            self.LOGGER.info(f"{{}}, {0}")
             return {}, 0
 
     def tx_min_fee(self, tx_in_count, tx_out_count): # Deprecated, use build_tx_components instead
@@ -398,7 +401,6 @@ class Node(Starter):
             '--tx-in-count', tx_in_count,
             '--tx-out-count', tx_out_count,
             '--witness-count', str(1),
-            # '--byron-witness-count', str(0),
             '--protocol-params-file', self.TRANSACTION_PATH_FILE + \
             '/protocol.json']
         if self.CARDANO_NETWORK == 'testnet':
@@ -429,8 +431,12 @@ class Node(Starter):
             command_string, index = self.insert_command(10,1,command_string,['--mainnet'])
 
         rawResult = self.execute_command(command_string, None)
+
         if rawResult == '':
-            rawResult = "Sign witness file stored in '%s'" % (path_skey)
+            self.LOGGER.info(f"Sign witness file stored in {path_skey + '.witness'}")
+        else:
+            self.LOGGER.error(f"Error executing command sign: {rawResult} {command_string}")
+            rawResult = None
         return(rawResult)
 
     def create_multisig_script(self, script_name, type, required, hashes):
@@ -450,15 +456,15 @@ class Node(Starter):
             }
             if type != 'all' and 'any':
                 if required == '':
-                    print("Type different than all or any must have required field specified")
+                    self.LOGGER.error("Type different than all or any must have required field specified")
                     return None
                 else:
                     multisig_script['required'] = required
             script_file_path = save_metadata(keys_file_path, script_name + '.script', multisig_script)
-            print("Script stored in '%s'\n '%s'" % (script_file_path, multisig_script))
+            self.LOGGER.info(f"Script stored in {script_file_path}, {multisig_script}")
         else:
             multisig_script = None
-            print("Check if the hash is a passed as a list type")
+            self.LOGGER.error(f"Check if the hash is of type list")
         return multisig_script
 
     def create_policy_id(self, script_name):
@@ -481,7 +487,7 @@ class Node(Starter):
         rawResult = self.execute_command(command_string, None)
         policyID = str(rawResult).rstrip()
         save_file(keys_file_path + '/', script_name + '.policyid', str(policyID))
-
+        self.LOGGER.info(f"PolicyID is: {policyID}")
         return policyID
 
     def sign_transaction(self, *args):
@@ -491,7 +497,6 @@ class Node(Starter):
             self.CARDANO_CLI_PATH,
             'transaction', 'sign',
             '--tx-body-file', self.TRANSACTION_PATH_FILE + '/tx.draft',
-            # '--signing-key-file', self.KEYS_FILE_PATH + '/' + sign_address_name + '/' + sign_address_name + '.payment.skey', 
             '--out-file', self.TRANSACTION_PATH_FILE + '/tx.signed']
         index = 5
         for arg in args:
@@ -502,9 +507,12 @@ class Node(Starter):
             command_string, index = self.insert_command(index + 5,1,command_string,['--mainnet'])
 
         rawResult = self.execute_command(command_string, None)
+
         if rawResult == '':
-            rawResult = "Sign transaction file stored in '%s'" % (self.TRANSACTION_PATH_FILE + '/tx.signed')
-            print(rawResult)
+            self.LOGGER.info(f"Sign witness file stored in {self.TRANSACTION_PATH_FILE + '/tx.signed'}")
+        else:
+            self.LOGGER.error(f"Error executing command sign: {rawResult} {command_string}")
+            rawResult = None
         return(rawResult)
 
     def submit_transaction(self):
@@ -519,7 +527,7 @@ class Node(Starter):
             command_string, index = self.insert_command(5,1,command_string,['--mainnet'])
 
         rawResult = self.execute_command(command_string, None)
-        print(rawResult)
+        self.LOGGER.info(rawResult)
         return(rawResult)
 
     def build_tx_components(self, params):
@@ -592,20 +600,14 @@ class Node(Starter):
             self.query_protocol()
             with open(self.TRANSACTION_PATH_FILE + '/protocol.json', 'r') as file:
                 utxoCostPerWord = json.load(file).get('utxoCostPerWord')
-            # min_utxo_value = self.min_utxo_lovelace(0, 0, utxoCostPerWord, '')
-            # quantity_array = [min_utxo_value]
 
             addr_origin_balance = self.get_balance(address_origin)
             addr_origin_tx = self.get_transactions(address_origin)
             if addr_origin_balance.get('lovelace') is not None:
-            # if addr_origin_balance['lovelace'] != 0:
-            # if addr_origin_tx != {}:
-                # addr_origin_tx = self.get_transactions(address_origin)
                 mint_output_string = ''
                 addr_output_array = []
                 mint_quantity_array = []
                 quantity_array = []
-                # mint_string = ''
                 mint_array = []
                 total_mint_name_len = 0
                 length_mint = 0
@@ -626,12 +628,6 @@ class Node(Starter):
                     mint_string = '--mint='
                     mint_string = mint_string + mint_output_string
                     mint_output_string = '+' + mint_output_string
-                    # min_utxo_value = self.min_utxo_lovelace(
-                    #     len(mint.get('tokens')), total_asset_name_len, utxoCostPerWord, '')
-                    # addr_output_array.append('--tx-out')
-                    # addr_output_array.append(address_origin + '+' + str(min_utxo_value) + '+' + mint_output_string)
-
-                    # quantity_array = [min_utxo_value]
                     mint_array.append(mint_string)
                     mint_array.append('--minting-script-file')
                     mint_array.append(policy_path)
@@ -648,8 +644,6 @@ class Node(Starter):
                             quantity = quantity * 1_000_000
                         if address_destin.get('assets') is not None:
                             length_assets = len(address_destin.get('assets'))
-                            # addr_output_array.append('--tx-out')
-                            # address_full_string = address_destin.get('address') + '+' + str(quantity)
                             for asset in address_destin.get('assets'):
                                 asset_name = asset.get('asset_name').encode('utf-8')
                                 asset_name = b16encode(asset_name).decode('utf-8')
@@ -665,11 +659,11 @@ class Node(Starter):
                                             addr_origin_tx, amount, False, asset_full_name)
                                         asset_output_string += str(amount) + ' ' + asset_full_name + '+'
                                         TxHash_in_asset += TxHash_in
-                                        # mint_output_string += str(amount) + '+' + 
                                     else:
+                                        self.LOGGER.error(f"Balance not enough asset_balance: {asset_balance}, amount: {amount}")
                                         raise Exception()
                                 else:
-                                    print(f"{asset_full_name} could not be found in wallet origin")
+                                    self.LOGGER.error(f"{asset_full_name} could not be found in wallet origin")
                                     raise Exception()
                             asset_output_string = asset_output_string[:-1]
                             min_utxo_value = self.min_utxo_lovelace(
@@ -679,7 +673,7 @@ class Node(Starter):
                                 addr_output_array.append('--tx-out')
                                 addr_output_array.append(address_destin.get('address') + '+' + str(quantity) + '+' + asset_output_string + mint_output_string)
                             else:
-                                print(f"Quantity to send less than min_utxo_value of: {min_utxo_value}")
+                                self.LOGGER.error(f"Quantity to send less than min_utxo_value of: {min_utxo_value}")
                                 raise Exception()
                         else:
                             min_utxo_value = self.min_utxo_lovelace(
@@ -689,11 +683,8 @@ class Node(Starter):
                                 addr_output_array.append('--tx-out')
                                 addr_output_array.append(address_destin.get('address') + '+' + str(quantity) + mint_output_string)
                             else:
-                                print(f"Quantity to send less than min_utxo_value of: {min_utxo_value}")
+                                self.LOGGER.error(f"Quantity to send less than min_utxo_value of: {min_utxo_value}")
                                 raise Exception()
-                            # addr_output_array.append('--tx-out')
-                            # addr_output_array.append(address_origin + '+' + str(min_utxo_value) + '+' + mint_output_string)
-                        # addr_output_array.append(address_full_string)
                 else:
                     min_utxo_value = self.min_utxo_lovelace(
                         length_mint + length_assets, total_mint_name_len + total_asset_name_len, utxoCostPerWord, '')
@@ -749,24 +740,24 @@ class Node(Starter):
                     i = i + index
                 if self.CARDANO_NETWORK == 'testnet':
                     command_string, index = self.insert_command(3 + i,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
+                    i = i + index
+                    command_string, index = self.insert_command(3 + i,1,command_string,['--' + str(self.CARDANO_ERA)])
                 else:
                     command_string, index = self.insert_command(3 + i,1,command_string,['--mainnet'])
 
-                print(command_string)
+                self.LOGGER.info(command_string)
                 rawResult = self.execute_command(command_string, None)
 
             else:
-                rawResult = 'Not utxos found in the address provided'
-                print(rawResult)
-
-            print("################################")
+                self.LOGGER.error(f"Not utxos found in the address provided")
+                rawResult = None
             return rawResult
         except TypeError:
-            print("Missing required arguments")
+            self.LOGGER.error(f"Missing required arguments")
         except AssertionError:
-            print(f"Errors in the message dictionary format. Check {v.errors}")  # type: ignore
+            self.LOGGER.error(f"Errors in the message dictionary format. Check {v.errors}") # type: ignore
         except Exception:
-            print(f"Errors while building the transaction. Probably insufficient ada or native asset funds")
+            self.LOGGER.error(f"Errors while building the transaction. Probably insufficient ada or native asset funds")
 
     def analyze_tx(self, tx_name_file):
         print('Analyzing the transaction....')
