@@ -5,6 +5,7 @@ from typing import Optional, Union
 import json
 # Module imports
 import path_utils
+from collections.abc import MutableMapping
 
 
 def getlogger(logger_name, level):
@@ -47,26 +48,36 @@ def check_nested_dicts(vals: dict):
         return False
 
 
-def flatten_dict(input_dict, deep: bool = False):
-    """
-    Reduce dictionary to only one nested level
-    """
-    output = []
-    for key, val in input_dict.items():
-        if deep:
-            try:
-                output.extend(flatten_dict(val).items())
-            except AttributeError:
-                output.append((key, val))
+# def flatten_dict(input_dict, deep: bool = False):
+#     """
+#     Reduce dictionary to only one nested level
+#     """
+#     output = []
+#     for key, val in input_dict.items():
+#         if deep:
+#             try:
+#                 output.extend(flatten_dict(val).items())
+#             except AttributeError:
+#                 output.append((key, val))
+#         else:
+#             try:
+#                 if check_nested_dicts(val):
+#                     output.extend(flatten_dict(val).items())
+#                 else:
+#                     output.append((key, val))
+#             except AttributeError:
+#                 output.append((key, val))
+#     return dict(output)
+
+def flatten_dict(d: MutableMapping, parent_key: str = '', sep: str ='.') -> MutableMapping:
+    items = []
+    for k, v in d.items():
+        new_key = parent_key + sep + k if parent_key else k
+        if isinstance(v, MutableMapping):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
         else:
-            try:
-                if check_nested_dicts(val):
-                    output.extend(flatten_dict(val).items())
-                else:
-                    output.append((key, val))
-            except AttributeError:
-                output.append((key, val))
-    return dict(output)
+            items.append((new_key, v))
+    return dict(items)
 
 
 def validate_vars(keywords: list, input_vars: dict, mandatory: bool = False) -> list:
@@ -133,23 +144,23 @@ def parse_inputs(keywords: list, fill: bool = False, *args, **kwargs):
         return validate_vars(keywords, kwargs, fill)
 
 
-def load_configs(vals: Union[str, dict], full_flat: bool) -> Optional[dict]:
-    """
-    Loads configuration files into a dictionary to be use for reading configs
-    """
-    if isinstance(vals, str):
-        try:
-            with open(path_utils.validate_path(vals, False)) as file:
-                output = json.load(file)
-                if check_nested_dicts(output):
-                    output = flatten_dict(output, full_flat)
-            return output
-        except FileNotFoundError:
-            logging.error('The provided file was not found')
-    elif isinstance(vals, dict):
-        output = vals
-        if check_nested_dicts(output):
-            output = flatten_dict(output, full_flat)
-        return output
-    else:
-        logging.error('Not supported configuration\'s input')
+# def load_configs(vals: Union[str, dict], full_flat: bool) -> Optional[dict]:
+#     """
+#     Loads configuration files into a dictionary to be use for reading configs
+#     """
+#     if isinstance(vals, str):
+#         try:
+#             with open(path_utils.validate_path(vals, False)) as file:
+#                 output = json.load(file)
+#                 if check_nested_dicts(output):
+#                     output = flatten_dict(output, full_flat)
+#             return output
+#         except FileNotFoundError:
+#             logging.error('The provided file was not found')
+#     elif isinstance(vals, dict):
+#         output = vals
+#         if check_nested_dicts(output):
+#             output = flatten_dict(output, full_flat)
+#         return output
+#     else:
+#         logging.error('Not supported configuration\'s input')

@@ -17,7 +17,7 @@ from cerberus import Validator
 WORKING_DIR = os.path.dirname(__file__)
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'cardanopythonlib'))
 from path_utils import create_folder, save_file, remove_file, save_metadata, config
-from data_utils import getlogger
+from data_utils import getlogger, flatten_dict
 
 CARDANO_CONFIGS = f'{WORKING_DIR}/config/cardano_config.ini'
 
@@ -492,6 +492,8 @@ class Node(Starter):
 
     def sign_transaction(self, *args):
         """Sign the transaction based on tx_raw file.
+         *args: represents the number of declared witness keys required to sign the transaction
+        Example: sign_transaction(wallet1, wallet2). Two witnesses, transaction will be signed by wallet1 and wallet2. 
         """
         command_string = [
             self.CARDANO_CLI_PATH,
@@ -499,13 +501,16 @@ class Node(Starter):
             '--tx-body-file', self.TRANSACTION_PATH_FILE + '/tx.draft',
             '--out-file', self.TRANSACTION_PATH_FILE + '/tx.signed']
         index = 5
+        i = 0
         for arg in args:
-            command_string, index = self.insert_command(index,1,command_string,['--signing-key-file', self.KEYS_FILE_PATH + '/' + arg + '/' + arg + '.payment.skey'])
+            command_string, index = self.insert_command(i + 5,1,command_string,['--signing-key-file', self.KEYS_FILE_PATH + '/' + arg + '/' + arg + '.payment.skey'])
+            i = i + index
         if self.CARDANO_NETWORK == 'testnet':
-            command_string, index = self.insert_command(index + 5,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
+            command_string, index = self.insert_command(i + 5,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
         else:
-            command_string, index = self.insert_command(index + 5,1,command_string,['--mainnet'])
+            command_string, index = self.insert_command(i + 5,1,command_string,['--mainnet'])
 
+        self.LOGGER.info(command_string)
         rawResult = self.execute_command(command_string, None)
 
         if rawResult == '':
@@ -526,6 +531,7 @@ class Node(Starter):
         else:
             command_string, index = self.insert_command(5,1,command_string,['--mainnet'])
 
+        self.LOGGER.info(command_string)
         rawResult = self.execute_command(command_string, None)
         self.LOGGER.info(rawResult)
         return(rawResult)
@@ -562,6 +568,7 @@ class Node(Starter):
                     'schema': {
                     'policyID': {'type': 'string', 'required': True},
                     'policy_path': {'type': 'string', 'required': True},
+                    'validity_interval': {'type': 'dict', 'schema': {'type': {'type': 'string', 'required': True}, 'slot': {'type':'integer', 'required': True}}},
                     "tokens": {'type': 'list', 'schema':{ 'type': 'dict',
                         'schema':{
                         'name': {'type': 'string', 'required': True},
@@ -611,10 +618,17 @@ class Node(Starter):
                 mint_array = []
                 total_mint_name_len = 0
                 length_mint = 0
+                slot_validity = None
+                type_validity = None
                 if mint is not None:
                     length_mint = len(mint.get('tokens'))
                     policyid = mint.get('policyID')
                     policy_path = mint.get('policy_path')
+                    # Find the validity time interval of the script if any.
+                    validity_interval = mint.get('validity_interval', None)
+                    if validity_interval is not None:
+                        slot_validity = validity_interval.get('slot', None)
+                        type_validity = validity_interval.get('type', None)
                     for token in mint.get('tokens'):
                         mint_name = token.get('name').encode('utf-8')
                         mint_name = b16encode(mint_name).decode('utf-8')
@@ -730,6 +744,17 @@ class Node(Starter):
                 if mint_array != []:
                     command_string, index = self.insert_command(3 + i, 1, command_string, mint_array)
                     i = i + index
+                    if slot_validity is not None and type_validity is not None:
+                        invalid = None
+                        if type_validity == 'before':
+                            invalid = '--invalid-hereafter'
+                        elif type_validity == 'after':
+                            invalid = '--invalid-before'
+                        else:
+                            self.LOGGER.error(f"Not supported type validity in the minting script {type_validity}")
+                        command_string, index = self.insert_command(3 + i, 1, command_string, [invalid, slot_validity])
+                        i = i + index
+
                 script_path_array = []
                 if script_path is not None:
                     script_path_array.append('--tx-in-script-file')
