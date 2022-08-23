@@ -607,6 +607,7 @@ class Node(Starter):
             self.query_protocol()
             with open(self.TRANSACTION_PATH_FILE + '/protocol.json', 'r') as file:
                 utxoCostPerWord = json.load(file).get('utxoCostPerWord')
+            min_utxo_value = 0
 
             addr_origin_balance = self.get_balance(address_origin)
             addr_origin_tx = self.get_transactions(address_origin)
@@ -702,12 +703,14 @@ class Node(Starter):
                 else:
                     min_utxo_value = self.min_utxo_lovelace(
                         length_mint + length_assets, total_mint_name_len + total_asset_name_len, utxoCostPerWord, '')
-                    addr_output_array.append('--tx-out')
-                    addr_output_array.append(address_origin + '+' + str(min_utxo_value) + mint_output_string)
+                    if mint is not None:
+                        addr_output_array.append('--tx-out')
+                        addr_output_array.append(address_origin + '+' + str(min_utxo_value) + mint_output_string)
 
                 addr_output_array.append('--change-address')
                 addr_output_array.append(change_address)
-
+                if quantity_array == []:
+                    quantity_array = [min_utxo_value]
                 target_calculated = sum(quantity_array)
                 deplete = False
                 TxHash_in, amount_equal = self.utxo_selection(
@@ -792,7 +795,7 @@ class Node(Starter):
             '--tx-body-file', self.TRANSACTION_PATH_FILE + '/' + tx_name_file]
 
         rawResult = self.execute_command(command_string, None)
-        print(rawResult)
+        self.LOGGER.info(rawResult)
         return rawResult
 
     def assemble_tx(self, witness_wallet_name_array):

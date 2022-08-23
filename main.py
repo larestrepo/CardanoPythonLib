@@ -27,7 +27,8 @@ node.get_transactions(wallet_id)
 # node.create_multisig_script(wallet_id,'all','',[hash])
 # node.create_policy_id(wallet_id)
 
-address_origin ='addr_test1vqrfdj8fkzs0pxg0eu4p38apgd430stz5hafx7pnsxn0ccg4jqkyd'
+# address_origin ='addr_test1vqrfdj8fkzs0pxg0eu4p38apgd430stz5hafx7pnsxn0ccg4jqkyd'
+address_origin ='addr_test1qpr9xmkn4fpexdcd9e8kt8fektvqyrg3vetmw8pmmlava2kcyxgcpfar5pu5dlxx9y9c0mm2mtj48uz56q9aakvn2vksw633r5'
 address_destin = [
         {
           "address": "addr_test1qr2ac9vl2epy3yjynkqyfuskx6wp6ld70579v3s6wknve3rjkcctzvtrmt0chuqgaphal08kaqhn0gn295v7wefe95eqvl97xq",
@@ -87,11 +88,12 @@ mint = { "policyID": "ae6498eeb6f7f7bdd3b411c7d3bdf0dfd29f6b989382f9bdb1279638",
 
 mint = None
 
+metadata = None
 params = {
     "message": {
         "tx_info": {
             "address_origin": address_origin,
-            "address_destin": address_destin,
+            "address_destin": None,
             "change_address": address_origin,
             "metadata": metadata,
             "mint": mint,
