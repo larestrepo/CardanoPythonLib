@@ -296,7 +296,7 @@ class Node(Starter):
         self.LOGGER.info(f"Total balance of assets is : {balance_dict.get('assets')}")
         return balance_dict
 
-    def utxo_selection(self, addr_origin_tx, quantity, deplete, coin_name):
+    def utxo_selection(self, addr_origin_tx, quantity, deplete, coin_name, minting):
         """ Function based on the coin selection algorithm to properly handle
         the use of utxos in the wallet.
         Rules are:
@@ -332,26 +332,29 @@ class Node(Starter):
         amount_equal = 0
         if addr_origin_tx:
             for utxo in addr_origin_tx:
-                for amount in utxo.get('amounts'):
-                    if amount.get('token') == coin_name:
-                        if deplete:
-                            # TxHash.append('--tx-in')
-                            TxHash.append([utxo.get('hash') + '#' + utxo.get('id')])
-                            amount_equal += int(amount.get('amount'))
-                            utxo_found = True
-                            break
-                        if int(amount.get('amount')) == quantity + minCost:
-                            # TxHash.append('--tx-in')
-                            TxHash.append(utxo.get('hash') + '#' + utxo.get('id'))
-                            amount_equal = int(amount.get('amount'))
-                            utxo_found = True
-                            break
-                        elif int(amount.get('amount')) < quantity + minCost:
-                            TxHash_lower.append(utxo.get('hash') + '#' + utxo.get('id'))
-                            amount_lower.append(int(amount.get('amount')))
-                        elif int(amount.get('amount')) > quantity + minCost:
-                            TxHash_greater.append(utxo.get('hash') + '#' + utxo.get('id'))
-                            amount_greater.append(int(amount.get('amount')))
+                if minting and len(utxo.get('amounts')) > 1:
+                    continue
+                else:
+                    for amount in utxo.get('amounts'):
+                        if amount.get('token') == coin_name:
+                            if deplete:
+                                # TxHash.append('--tx-in')
+                                TxHash.append([utxo.get('hash') + '#' + utxo.get('id')])
+                                amount_equal += int(amount.get('amount'))
+                                utxo_found = True
+                                break
+                            if int(amount.get('amount')) == quantity + minCost:
+                                # TxHash.append('--tx-in')
+                                TxHash.append(utxo.get('hash') + '#' + utxo.get('id'))
+                                amount_equal = int(amount.get('amount'))
+                                utxo_found = True
+                                break
+                            elif int(amount.get('amount')) < quantity + minCost:
+                                TxHash_lower.append(utxo.get('hash') + '#' + utxo.get('id'))
+                                amount_lower.append(int(amount.get('amount')))
+                            elif int(amount.get('amount')) > quantity + minCost:
+                                TxHash_greater.append(utxo.get('hash') + '#' + utxo.get('id'))
+                                amount_greater.append(int(amount.get('amount')))
 
             if not utxo_found:
                 if sum(amount_lower) == quantity + minCost:
@@ -550,7 +553,7 @@ class Node(Starter):
                     'nullable': True,
                     'schema':{ 'type': 'dict', 'schema':{
                         'address': {'type': 'string', 'required': True},
-                        'amount': {'type': 'dict', 'required': True, 'schema': {'quantity': {'type': 'integer', 'required': True}, 'unit': {'type': 'string', 'allowed': ['lovelace', 'ada']}}},
+                        'amount': {'type': 'dict', 'nullable': True, 'schema': {'quantity': {'type': 'integer', 'required': True}, 'unit': {'type': 'string', 'allowed': ['lovelace', 'ada']}}},
                         'assets': {'type': 'list', 'nullable': True, 
                             'schema': {'type': 'dict', 'schema':{'asset_name': {'type': 'string', 'required': True}, 'amount': {'type': 'integer', 'required': True}, 'policyID': {'type': 'string', 'required': True}}}}
                 }}},
@@ -611,7 +614,7 @@ class Node(Starter):
 
             addr_origin_balance = self.get_balance(address_origin)
             addr_origin_tx = self.get_transactions(address_origin)
-            if addr_origin_balance.get('lovelace') is not None:
+            if addr_origin_balance.get('lovelace') is not None: 
                 mint_output_string = ''
                 addr_output_array = []
                 mint_quantity_array = []
@@ -621,7 +624,9 @@ class Node(Starter):
                 length_mint = 0
                 slot_validity = None
                 type_validity = None
+                minting = False
                 if mint is not None:
+                    minting = True
                     length_mint = len(mint.get('tokens'))
                     policyid = mint.get('policyID')
                     policy_path = mint.get('policy_path')
@@ -644,7 +649,7 @@ class Node(Starter):
                     mint_string = mint_string + mint_output_string
                     mint_output_string = '+' + mint_output_string
                     mint_array.append(mint_string)
-                    mint_array.append('--minting-script-file')
+                    mint_array.append('--mint-script-file')
                     mint_array.append(policy_path)
 
                 length_assets = 0
@@ -653,10 +658,13 @@ class Node(Starter):
                 TxHash_in_asset = []
                 if address_destin_array is not None:
                     for address_destin in address_destin_array:
-                        amount = address_destin.get('amount')
-                        quantity = amount.get('quantity')
-                        if amount.get('unit') == 'ada':
-                            quantity = quantity * 1_000_000
+                        amount = address_destin.get('amount', None)
+                        if amount is not None:
+                            quantity = amount.get('quantity')
+                            if amount.get('unit') == 'ada':
+                                quantity = quantity * 1_000_000
+                        else:
+                            quantity = 0
                         if address_destin.get('assets') is not None:
                             length_assets = len(address_destin.get('assets'))
                             for asset in address_destin.get('assets'):
@@ -671,7 +679,7 @@ class Node(Starter):
                                     asset_balance = addr_origin_balance.get(asset_full_name)
                                     if amount <= asset_balance:
                                         TxHash_in, amount_equal = self.utxo_selection(
-                                            addr_origin_tx, amount, False, asset_full_name)
+                                            addr_origin_tx, amount, False, asset_full_name, minting)
                                         asset_output_string += str(amount) + ' ' + asset_full_name + '+'
                                         TxHash_in_asset += TxHash_in
                                     else:
@@ -683,6 +691,8 @@ class Node(Starter):
                             asset_output_string = asset_output_string[:-1]
                             min_utxo_value = self.min_utxo_lovelace(
                                 length_mint + length_assets, total_mint_name_len + total_asset_name_len, utxoCostPerWord, '')
+                            if quantity == 0:
+                                quantity = min_utxo_value
                             if quantity >= min_utxo_value:
                                 quantity_array.append(quantity)
                                 addr_output_array.append('--tx-out')
@@ -693,6 +703,8 @@ class Node(Starter):
                         else:
                             min_utxo_value = self.min_utxo_lovelace(
                              length_mint + length_assets, total_mint_name_len + total_asset_name_len, utxoCostPerWord, '')
+                            if quantity == 0:
+                                quantity = min_utxo_value
                             if quantity >= min_utxo_value:
                                 quantity_array.append(quantity)
                                 addr_output_array.append('--tx-out')
@@ -714,7 +726,7 @@ class Node(Starter):
                 target_calculated = sum(quantity_array)
                 deplete = False
                 TxHash_in, amount_equal = self.utxo_selection(
-                    addr_origin_tx, target_calculated, deplete, 'lovelace')
+                    addr_origin_tx, target_calculated, deplete, 'lovelace', minting)
                 TxHash_in = TxHash_in + TxHash_in_asset
                 TxHash_in = list(set(TxHash_in)) # remove utxo duplicates
                 tx_in = len(TxHash_in) * ['--tx-in']
