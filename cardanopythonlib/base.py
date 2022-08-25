@@ -54,8 +54,8 @@ class Starter():
                 print(f"Creation of the keys folder in: {self.KEYS_FILE_PATH}")
             params=config(config_path, section='logger')
             self.LOGGER = getlogger(__name__, params.get('level'))
-            self.LOGGER.info(f"Working on CARDANO_NETWORK: {self.CARDANO_NETWORK} with CARDANO_NETWORK_MAGIC: {self.CARDANO_NETWORK_MAGIC}")
-            self.LOGGER.info(f"If you are using cardano-wallet, this is the default internal url: {self.URL}")
+            self.LOGGER.debug(f"Working on CARDANO_NETWORK: {self.CARDANO_NETWORK} with CARDANO_NETWORK_MAGIC: {self.CARDANO_NETWORK_MAGIC}")
+            self.LOGGER.debug(f"If you are using cardano-wallet, this is the default internal url: {self.URL}")
         else:
             print('Problems loading the cardano_config file')
 
@@ -88,7 +88,7 @@ class Starter():
         Empty docstring
         """
         if not address.startswith('addr' or 'DdzFF'):
-            self.LOGGER.info(f"{address} is not a valid addresss")
+            self.LOGGER.warning(f"{address} is not a valid addresss")
             return False
         else:
             return True
@@ -257,7 +257,7 @@ class Node(Starter):
                     tr_amount['amount'] = trans[3 + i * 3 + 2]
                     transaction['amounts'].append(tr_amount)
                 token_transactions.append(transaction)
-        self.LOGGER.info(token_transactions)
+        self.LOGGER.debug(token_transactions)
         return token_transactions
 
     def get_balance(self, wallet_id):
@@ -383,10 +383,10 @@ class Node(Starter):
                             amount_equal = sum(amount_array)
                             break
                     TxHash = utxo_array
-            self.LOGGER.info(f"{TxHash}, {amount_equal}")
+            self.LOGGER.debug(f"{TxHash}, {amount_equal}")
             return TxHash, amount_equal
         else:
-            self.LOGGER.info(f"{{}}, {0}")
+            self.LOGGER.debug(f"{{}}, {0}")
             return {}, 0
 
     def tx_min_fee(self, tx_in_count, tx_out_count): # Deprecated, use build_tx_components instead
