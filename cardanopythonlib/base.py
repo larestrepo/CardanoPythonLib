@@ -620,6 +620,8 @@ class Node(Starter):
             self.query_protocol()
             with open(self.TRANSACTION_PATH_FILE + '/protocol.json', 'r') as file:
                 utxoCostPerWord = json.load(file).get('utxoCostPerWord')
+            if utxoCostPerWord is None:
+                utxoCostPerWord = 34480
             min_utxo_value = 0
 
             addr_origin_balance = self.get_balance(address_origin)
