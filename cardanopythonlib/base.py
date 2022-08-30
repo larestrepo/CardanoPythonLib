@@ -869,7 +869,7 @@ class Keys(Starter):
         print('Executing Generate New Mnemonic Phrase')
         # Generate mnemonic
         command_string = [
-            'cardano-wallet', 'recovery-phrase', 'generate',
+            'cardano-address', 'recovery-phrase', 'generate',
             '--size', str(size)
         ]
         rawResult = self.execute_command(command_string, None)
