@@ -80,7 +80,7 @@ class Starter():
             rawResult = output.stderr.decode('utf-8')
 
         # print(rawResult)
-        self.LOGGER.info(rawResult)
+        # self.LOGGER.info(rawResult)
         return(rawResult)
 
     def validate_address(self, address: str) -> bool:
@@ -291,9 +291,19 @@ class Node(Starter):
                     balance = 0
                     for k in value:
                         balance = balance + int(k['amount'])
-                    balance_dict[key] = balance
-        self.LOGGER.info(f"Total balance of lovelace is : {balance_dict.get('lovelace')}")
-        self.LOGGER.info(f"Total balance of assets is : {balance_dict.get('assets')}")
+                    if key != 'lovelace':
+                        asset_namef = key.split('.')
+                        policyid = asset_namef[0]
+                        asset_name = asset_namef[1]
+                        asset_name = bytes.fromhex(asset_name).decode('utf-8')
+                        balance_dict[asset_name] = {
+                            "policyID": policyid,
+                            "balance": balance
+                        }
+                    else:
+                        balance_dict[key] = balance
+        for k, v in balance_dict.items():
+            self.LOGGER.info(f"{k} is : {v}")
         return balance_dict
 
     def utxo_selection(self, addr_origin_tx, quantity, deplete, coin_name, minting):
@@ -339,7 +349,7 @@ class Node(Starter):
                         if amount.get('token') == coin_name:
                             if deplete:
                                 # TxHash.append('--tx-in')
-                                TxHash.append([utxo.get('hash') + '#' + utxo.get('id')])
+                                TxHash.append(utxo.get('hash') + '#' + utxo.get('id'))
                                 amount_equal += int(amount.get('amount'))
                                 utxo_found = True
                                 break
@@ -652,12 +662,14 @@ class Node(Starter):
                     mint_array.append('--mint-script-file')
                     mint_array.append(policy_path)
 
-                length_assets = 0
-                total_asset_name_len = 0
                 asset_output_string = ''
                 TxHash_in_asset = []
+                length_assets = 0
+                total_asset_name_len = 0
                 if address_destin_array is not None:
                     for address_destin in address_destin_array:
+                        length_assets = 0
+                        total_asset_name_len = 0
                         amount = address_destin.get('amount', None)
                         if amount is not None:
                             quantity = amount.get('quantity')
@@ -727,11 +739,13 @@ class Node(Starter):
                 deplete = False
                 TxHash_in, amount_equal = self.utxo_selection(
                     addr_origin_tx, target_calculated, deplete, 'lovelace', minting)
-                TxHash_in = TxHash_in + TxHash_in_asset
-                TxHash_in = list(set(TxHash_in)) # remove utxo duplicates
+                if TxHash_in_asset != []:
+                    TxHash_in = TxHash_in + TxHash_in_asset
+                    TxHash_in = list(set(TxHash_in)) # remove utxo duplicates
                 tx_in = len(TxHash_in) * ['--tx-in']
                 TxHash_in = list(chain(*zip(tx_in, TxHash_in))) # Intercalate elements
 
+#########################################################
                 command_string = [
                     self.CARDANO_CLI_PATH,
                     'transaction', 'build',
