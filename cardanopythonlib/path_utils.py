@@ -214,9 +214,9 @@ def config(config_path, section):
     parser=ConfigParser()
     # read config file
     parser.read(config_path)
+    params = {}
     if parser.has_section(section):
         items = parser.items(section)
-        params = {}
         for item in items:
             params[item[0]] =item[1]
 
