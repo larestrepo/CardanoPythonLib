@@ -798,6 +798,8 @@ class Node(Starter):
                     command_string, index = self.insert_command(3 + i,1,command_string,['--' + str(self.CARDANO_ERA)])
                 else:
                     command_string, index = self.insert_command(3 + i,1,command_string,['--mainnet'])
+                    i = i + index
+                    command_string, index = self.insert_command(3 + i,1,command_string,['--' + str(self.CARDANO_ERA)])
 
                 self.LOGGER.info(command_string)
                 rawResult = self.execute_command(command_string, None)
