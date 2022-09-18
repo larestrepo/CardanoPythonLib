@@ -54,7 +54,10 @@ class Starter():
                 print(f"Creation of the keys folder in: {self.KEYS_FILE_PATH}")
             params=config(config_path, section='logger')
             self.LOGGER = getlogger(__name__, params.get('level'))
-            self.LOGGER.debug(f"Working on CARDANO_NETWORK: {self.CARDANO_NETWORK} with CARDANO_NETWORK_MAGIC: {self.CARDANO_NETWORK_MAGIC}")
+            if self.CARDANO_NETWORK == 'testnet':
+                self.LOGGER.debug(f"Working on CARDANO_NETWORK: {self.CARDANO_NETWORK} with CARDANO_NETWORK_MAGIC: {self.CARDANO_NETWORK_MAGIC}")
+            else:
+                self.LOGGER.debug(f"Working on CARDANO_NETWORK: {self.CARDANO_NETWORK}")
             self.LOGGER.debug(f"If you are using cardano-wallet, this is the default internal url: {self.URL}")
         else:
             print('Problems loading the cardano_config file')
@@ -741,8 +744,8 @@ class Node(Starter):
                 deplete = False
                 TxHash_in, amount_equal = self.utxo_selection(
                     addr_origin_tx, target_calculated, deplete, 'lovelace', minting)
-                if TxHash_in_asset != []:
-                    TxHash_in = TxHash_in + TxHash_in_asset
+                if TxHash_in_asset != [] and TxHash_in !=[]:
+                    TxHash_in = TxHash_in + TxHash_in_asset  # type: ignore
                     TxHash_in = list(set(TxHash_in)) # remove utxo duplicates
                 tx_in = len(TxHash_in) * ['--tx-in']
                 TxHash_in = list(chain(*zip(tx_in, TxHash_in))) # Intercalate elements
