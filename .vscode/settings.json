@@ -15,5 +15,12 @@
     ],
     "python.testing.pytestEnabled": false,
     "python.testing.unittestEnabled": true,
+    "editor.quickSuggestionsDelay": 1000,
+    "editor.quickSuggestions":{
+        "other": "on",
+        "comments": "off",
+        "strings": "off"
+    },
+    "editor.parameterHints.enabled" : false,
 
 }

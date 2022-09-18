@@ -33,9 +33,9 @@ Available methods are:
 
 ***
 
-Using the deriveAllKeys method, you can create all the keys with just a few lines of code ( run this from python3 in the terminal or within a file like the main.py provided): 
+By using the deriveAllKeys method, you can create all the keys with just a few lines of code: 
 
-### Option 1
+### Option 1. Cardano-wallet required
 
 Create a wallet from scratch provide the number of words (recommended size = 24)
 

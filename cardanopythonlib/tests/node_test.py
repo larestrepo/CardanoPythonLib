@@ -8,9 +8,8 @@ from cardanopythonlib import base
 
 class TestLibrary (unittest.TestCase):
     def setUp(self):
-        self.WORKING_DIR = os.getcwd()
-        self.CARDANO_CONFIGS = f'{self.WORKING_DIR}/config/cardano_config.json'
-        self.starter = base.Starter(self.CARDANO_CONFIGS)
+        self.config_path = './config/cardano_config.ini'
+        self.starter = base.Starter(self.config_path)
         self.node = base.Node()
 
     #####################################
@@ -41,7 +40,7 @@ class TestLibrary (unittest.TestCase):
             else:
                 mock_address = 'addr1qx466898end6q5mpvrwwmycq35v83c9e8cnffadv6gr6q6azs4s26v4800nwg8jygvrdqh6xhsphct0d4zqsnd3sagxqqjjgln'
             transactions = self.node.get_transactions(mock_address)
-            self.assertIs(type(transactions), dict, "Confirm if the address has utxos")
+            self.assertIs(type(transactions), list, "Confirm if the address has utxos")
 
         except AssertionError:
             print(f"Verify your CARDANO_NETWORK in the json settings. Current value is: {CARDANO_NETWORK}")

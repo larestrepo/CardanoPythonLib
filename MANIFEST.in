@@ -1,0 +1,3 @@
+recursive-include cardanopythonlib *
+include LICENSE
+include config/*.ini

@@ -1,26 +1,36 @@
 from cardanopythonlib import base
 
+starter = base.Starter()
+# print(starter.CARDANO_CLI_PATH)
+
+# config_path = './config/cardano_config.ini'
 keys = base.Keys()
+keys.generate_mnemonic(24)
 
-# Option 1
+# # Option 1
 
-# wallet_name = 'receiving'
+wallet_name = 'receiving'
 # nmemonic_size = 24
-# keys.deriveAllKeys(wallet_name, size= nmemonic_size)
+# # keys.generate_mnemonic()
+# words = ['stock', 'pattern', 'fire', 'thought', 'denial', 'divorce', 'rocket', 'destroy', 'dog', 'weekend', 'twin', 'group', 'emerge', 'invest', 'muffin', 'outer', 'dress', 'mom', 'action', 'average', 'arrange', 'proud', 'piano', 'doctor']
+# keys.deriveAllKeys(wallet_name, words = words)
 
 
 # Building multisig script
 node = base.Node()
+# node.query_protocol()
 node.KEYS_FILE_PATH
-wallet_id = 'wallet01'
-# node.get_transactions(wallet_id)
+# wallet_id = 'wallet01'
+# print(node.query_tip_exec())
+# node.get_transactions(wallet_name)
 # print(node.analyze_tx('tx.draft'))
 
 # hash= keys.keyHashing(wallet_id)
 # node.create_multisig_script(wallet_id,'all','',[hash])
 # node.create_policy_id(wallet_id)
 
-address_origin ='addr_test1vqrfdj8fkzs0pxg0eu4p38apgd430stz5hafx7pnsxn0ccg4jqkyd'
+# address_origin ='addr_test1vqrfdj8fkzs0pxg0eu4p38apgd430stz5hafx7pnsxn0ccg4jqkyd'
+address_origin ='addr_test1vp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qcul3azr'
 address_destin = [
         {
           "address": "addr_test1qr2ac9vl2epy3yjynkqyfuskx6wp6ld70579v3s6wknve3rjkcctzvtrmt0chuqgaphal08kaqhn0gn295v7wefe95eqvl97xq",
@@ -80,14 +90,15 @@ mint = { "policyID": "ae6498eeb6f7f7bdd3b411c7d3bdf0dfd29f6b989382f9bdb1279638",
 
 mint = None
 
+metadata = None
 params = {
     "message": {
         "tx_info": {
             "address_origin": address_origin,
-            "address_destin": address_destin,
+            "address_destin": None,
             "change_address": address_origin,
-            "metadata": metadata,
-            "mint": mint,
+            "metadata": None,
+            "mint": None,
             "script_path": None,
             "witness": witness,
         }
@@ -96,6 +107,6 @@ params = {
 
 result = node.build_tx_components(params)
 
-sign_address_name = 'wallet01'
-result = node.sign_transaction(sign_address_name)
+# sign_address_name = 'wallet01'
+result = node.sign_transaction(wallet_name)
 result = node.submit_transaction()
