@@ -209,14 +209,14 @@ def save_metadata(path, name, metadata):
 
     return metadata_json_file
 
-def config(config_path, section='node'):
+def config(config_path, section):
     # create a parser
     parser=ConfigParser()
     # read config file
     parser.read(config_path)
+    params = {}
     if parser.has_section(section):
         items = parser.items(section)
-        params = {}
         for item in items:
             params[item[0]] =item[1]
 
