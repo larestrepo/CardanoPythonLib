@@ -2,5 +2,5 @@ from os.path import dirname, abspath
 
 ROOT_DIR = dirname(abspath(__file__))
 
-__version__ = "1.0.1b"
+__version__ = "1.0.3b"
 __author__ = 'Moxie'
