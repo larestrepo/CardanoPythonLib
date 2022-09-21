@@ -35,7 +35,6 @@ def getlogger(logger_name, level):
     logging.config.dictConfig(MY_LOGGING_CONFIG)
     logger = logging.getLogger(logger_name)
     return logger
-    # logger.info('info log')
 
 
 def check_nested_dicts(vals: dict):

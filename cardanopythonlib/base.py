@@ -17,7 +17,7 @@ from cerberus import Validator
 WORKING_DIR = os.path.dirname(__file__)
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'cardanopythonlib'))
 from path_utils import create_folder, save_file, remove_file, save_metadata, config
-from data_utils import getlogger, flatten_dict
+from data_utils import getlogger
 
 CARDANO_CONFIGS = f'{WORKING_DIR}/config/cardano_config.ini'
 
