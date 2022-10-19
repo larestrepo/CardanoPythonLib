@@ -12,11 +12,12 @@ from base64 import b16encode
 from itertools import groupby, chain
 from operator import itemgetter
 from cerberus import Validator
+from typing import Union, Tuple
 
 # Module Imports
 WORKING_DIR = os.path.dirname(__file__)
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'cardanopythonlib'))
-from path_utils import create_folder, save_file, remove_file, save_metadata, config
+from path_utils import create_folder, save_file, remove_file, save_metadata, config, remove_folder
 from data_utils import getlogger
 
 CARDANO_CONFIGS = f'{WORKING_DIR}/config/cardano_config.ini'
@@ -39,21 +40,34 @@ class Starter():
     def __init__(self, config_path=CARDANO_CONFIGS):
         params=config(config_path,section='node')
         if params is not None:
+            # Initializing variables
             self.CARDANO_NETWORK_MAGIC = params.get('cardano_network_magic')
             self.CARDANO_CLI_PATH = params.get('cardano_cli_path')
             self.CARDANO_NETWORK = params.get('cardano_network')
             self.CARDANO_ERA = params.get('cardano_era')
             self.TRANSACTION_PATH_FILE = str(params.get('transaction_path_file'))
             self.KEYS_FILE_PATH = str(params.get('keys_file_path'))
+            self.SCRIPTS_FILE_PATH = str(params.get('scripts_file_path'))
             self.URL = params.get('url')
-            if not os.path.exists(self.TRANSACTION_PATH_FILE):
-                os.makedirs(self.TRANSACTION_PATH_FILE)
-                print(f"Creation of the transaction folder in: {self.TRANSACTION_PATH_FILE}")
-            if not os.path.exists(self.KEYS_FILE_PATH):
-                os.makedirs(self.KEYS_FILE_PATH, exist_ok=True)
-                print(f"Creation of the keys folder in: {self.KEYS_FILE_PATH}")
+            self.PLUTUS_FOLDER = self.SCRIPTS_FILE_PATH + '/plutus'
+            self.MINT_FOLDER = self.SCRIPTS_FILE_PATH + '/mint'
+            self.MULTISIG_FOLDER = self.SCRIPTS_FILE_PATH + '/multisig'
+
+            # Setting up the logger level
             params=config(config_path, section='logger')
             self.LOGGER = getlogger(__name__, params.get('level'))
+
+            if not os.path.exists(self.TRANSACTION_PATH_FILE):
+                os.makedirs(self.TRANSACTION_PATH_FILE)
+                self.LOGGER.debug(f"Creation of the transaction folder in: {self.TRANSACTION_PATH_FILE}")
+            if not os.path.exists(self.KEYS_FILE_PATH):
+                os.makedirs(self.KEYS_FILE_PATH, exist_ok=True)
+                self.LOGGER.debug(f"Creation of the keys folder in: {self.KEYS_FILE_PATH}")
+            if not os.path.exists(self.SCRIPTS_FILE_PATH):
+                os.makedirs(self.SCRIPTS_FILE_PATH, exist_ok=True)
+
+                create_folder([self.PLUTUS_FOLDER, self.MINT_FOLDER, self.MULTISIG_FOLDER])
+                self.LOGGER.debug(f"Creation of the scripts folder in: {self.SCRIPTS_FILE_PATH} and subfolders: {self.PLUTUS_FOLDER}, {self.MINT_FOLDER} and {self.MULTISIG_FOLDER}")
             if self.CARDANO_NETWORK == 'testnet':
                 self.LOGGER.debug(f"Working on CARDANO_NETWORK: {self.CARDANO_NETWORK} with CARDANO_NETWORK_MAGIC: {self.CARDANO_NETWORK_MAGIC}")
             else:
@@ -116,6 +130,13 @@ class Starter():
         finalized_size = utxo_entry_size + b_size + data_hash_size
         minUTxOValue = finalized_size * utxoCostPerWord
 
+        # TODO
+        # https://github.com/bloxbean/cardano-client-lib/commit/750992805262e397fae754cdfd7602a4a5b5f951
+        # https://hydra.iohk.io/build/15339994/download/1/babbage-changes.pdf
+        # New calculation after babbage era
+        # coinsPerUTXOsize = 4310 Before it was 34480
+        # minUTxOValue = (finalized_size + 160) * coinsPerUTXOsize
+
         return minUTxOValue
 
     @staticmethod
@@ -156,7 +177,17 @@ class Node(Starter):
             address = wallet_name
         return address
 
-    def get_txid(self):
+    def get_txid_body(self):
+
+        print('Executing get transaction ID from Tx.draft file')
+        command_string = [
+            self.CARDANO_CLI_PATH,
+            'transaction', 'txid',
+            '--tx-body-file', self.TRANSACTION_PATH_FILE + '/tx.draft']
+        rawResult = self.execute_command(command_string, None)
+        return(rawResult)
+
+    def get_txid_signed(self):
 
         print('Executing get transaction ID from Tx.signed file')
         command_string = [
@@ -181,20 +212,19 @@ class Node(Starter):
         protocol_file = TRANSACTION_PATH_FILE + '/protocol.json'
         command_string = [
             self.CARDANO_CLI_PATH,
-            'query', 'protocol-parameters',
-            '--out-file', protocol_file]
+            'query', 'protocol-parameters']
         if self.CARDANO_NETWORK == 'testnet':
             command_string, index = self.insert_command(3,1,command_string,['--testnet-magic',self.CARDANO_NETWORK_MAGIC])
         else:
             command_string, index = self.insert_command(3,1,command_string,['--mainnet'])
 
         rawResult = self.execute_command(command_string, None)
-        if rawResult == '':
+        rawResult = json.loads(rawResult)
+        
+        with open(protocol_file, 'w') as file:
+            json.dump(rawResult, file, indent=4, ensure_ascii=False)
             self.LOGGER.info(f"Protocol parameters file stored in {protocol_file}")
-        else:
-            self.LOGGER.error(f"Error executing command query protocol: {rawResult} {command_string}")
-            rawResult = None
-        return(rawResult)
+        return rawResult
 
     def query_tip_exec(self):
         """Execute query tip.
@@ -455,35 +485,64 @@ class Node(Starter):
             rawResult = None
         return(rawResult)
 
-    def create_multisig_script(self, script_name, type, required, hashes):
+    def create_simple_script(self, **kwargs: dict) -> Tuple[Union[dict, None], Union[str, None]]:
         print('Executing Creation of script')
-        keys_file_path = self.KEYS_FILE_PATH + '/' + script_name
-        script_array = []
-        if isinstance(hashes, list):
+        parameters = kwargs['parameters']
+
+
+        try: 
+            script_name = parameters['name']
+            type = parameters['type']
+            required = parameters.get('required', None)
+            hashes = parameters['hashes']
+            type_time = parameters.get('type_time', None)
+            slot = parameters.get('slot', None)
+            purpose = parameters['purpose']
+            
+            script_array = []
+            simple_script = None
+            policyID = None
             for hash in hashes:
                 script = {
                     "type": "sig",
                     "keyHash": str(hash)
                 }
                 script_array.append(script)
-            multisig_script = {
+            if isinstance(type_time, str) and isinstance(slot, int):
+                script_array.append({"type": type_time, "slot": slot})
+            simple_script = {
                 "type": str(type),
                 "scripts": script_array
             }
             if type != 'all' and 'any':
-                if required == '':
-                    self.LOGGER.error("Type different than all or any must have required field specified")
-                    return None
+                if isinstance(required, int):
+                    simple_script['required'] = required
                 else:
-                    multisig_script['required'] = required
-            script_file_path = save_metadata(keys_file_path, script_name + '.script', multisig_script)
-            self.LOGGER.info(f"Script stored in {script_file_path}, {multisig_script}")
-        else:
-            multisig_script = None
-            self.LOGGER.error(f"Check if the hash is of type list")
-        return multisig_script
+                    self.LOGGER.error("Type different than all or any must have required field specified")
+                    return None, None
+                
+            if purpose == 'mint':
+                script_file_path = self.MINT_FOLDER
+            elif purpose == 'multisig':
+                script_file_path = self.MULTISIG_FOLDER
+            else:
+                script_file_path = None
 
-    def create_policy_id(self, script_name):
+            if script_file_path is not None:
+                save_metadata(script_file_path, script_name + '.script', simple_script)
+                policyID = self.create_policy_id(purpose, script_name)
+                self.LOGGER.info(f"Script stored in {script_file_path}, {simple_script}")
+            else:
+                self.LOGGER.info(f"Check the purpose provided")
+
+        except Exception:
+            self.LOGGER.error(f"Problems creating the script or policyID")
+            simple_script = None
+            policyID = None
+
+        return simple_script, policyID
+
+    def create_policy_id(self, purpose: str, script_name: str) -> Union[str, None]:
         """_summary_
          Args:
             wallet_id: id generated by cardano wallet API or payment address.
@@ -492,17 +551,26 @@ class Node(Starter):
             _type_: policyID, policy_script
         """
         print('Executing Creation of Minting Policy ID')
-        keys_file_path = self.KEYS_FILE_PATH + '/' + script_name
-        if not os.path.exists(keys_file_path):
-            os.makedirs(keys_file_path)
+
         # Generate policyID from the policy script file
-        command_string = [
-            self.CARDANO_CLI_PATH, 'transaction', 'policyid', '--script-file',
-            keys_file_path + '/' + script_name + '.script'
-        ]
-        rawResult = self.execute_command(command_string, None)
-        policyID = str(rawResult).rstrip()
-        save_file(keys_file_path + '/', script_name + '.policyid', str(policyID))
+        if purpose == 'mint':
+            script_file_path = self.MINT_FOLDER
+        elif purpose == 'multisig':
+            script_file_path = self.MULTISIG_FOLDER
+        else:
+            script_file_path = None
+        
+        if script_file_path is not None:
+            command_string = [
+                self.CARDANO_CLI_PATH, 'transaction', 'policyid', '--script-file',
+                script_file_path + '/' + script_name  + '.script'
+            ]
+            rawResult = self.execute_command(command_string, None)
+            policyID = str(rawResult).rstrip()
+            save_file(script_file_path + '/', script_name + '.policyid', str(policyID))
+        else:
+            policyID = None
+        
         self.LOGGER.info(f"PolicyID is: {policyID}")
         return policyID
 
@@ -531,6 +599,7 @@ class Node(Starter):
 
         if rawResult == '':
             self.LOGGER.info(f"Sign witness file stored in {self.TRANSACTION_PATH_FILE + '/tx.signed'}")
+            rawResult = "Transaction signed!!"
         else:
             self.LOGGER.error(f"Error executing command sign: {rawResult} {command_string}")
             rawResult = None
@@ -555,7 +624,6 @@ class Node(Starter):
     def build_tx_components(self, params):
 
         print('Building the transaction')
-        params = params.get('message').get('tx_info')
         schema = {
                 'address_origin': {
                     'type': 'string',
@@ -566,7 +634,7 @@ class Node(Starter):
                     'nullable': True,
                     'schema':{ 'type': 'dict', 'schema':{
                         'address': {'type': 'string', 'required': True},
-                        'amount': {'type': 'dict', 'nullable': True, 'schema': {'quantity': {'type': 'integer', 'required': True}, 'unit': {'type': 'string', 'allowed': ['lovelace', 'ada']}}},
+                        'amount': {'type': 'integer'},
                         'assets': {'type': 'list', 'nullable': True, 
                             'schema': {'type': 'dict', 'schema':{'asset_name': {'type': 'string', 'required': True}, 'amount': {'type': 'integer', 'required': True}, 'policyID': {'type': 'string', 'required': True}}}}
                 }}},
@@ -675,14 +743,15 @@ class Node(Starter):
                     for address_destin in address_destin_array:
                         length_assets = 0
                         total_asset_name_len = 0
-                        amount = address_destin.get('amount', None)
-                        if amount is not None:
-                            quantity = amount.get('quantity')
-                            if amount.get('unit') == 'ada':
-                                quantity = quantity * 1_000_000
-                        else:
-                            quantity = 0
-                        if address_destin.get('assets') is not None:
+                        amount = address_destin['amount']
+                        quantity = amount
+                        # if amount is not None:
+                        #     quantity = amount.get('quantity')
+                        #     if amount.get('unit') == 'ada':
+                        #         quantity = quantity * 1_000_000
+                        # else:
+                        #     quantity = 0
+                        if address_destin.get('assets') is not None and address_destin.get('assets') !=[]:
                             length_assets = len(address_destin.get('assets'))
                             for asset in address_destin.get('assets'):
                                 asset_name = asset.get('asset_name').encode('utf-8')
@@ -766,7 +835,7 @@ class Node(Starter):
                 )
                 i = i + index
                 metadata_array = []
-                if metadata is not None:
+                if metadata is not None and metadata !={}:
                     metadata_json_file = save_metadata(
                         self.TRANSACTION_PATH_FILE, 'tx_metadata.json', metadata)
                     metadata_array.append('--metadata-json-file')
@@ -808,24 +877,40 @@ class Node(Starter):
 
                 self.LOGGER.info(command_string)
                 rawResult = self.execute_command(command_string, None)
+                self.LOGGER.info(rawResult)
 
             else:
                 self.LOGGER.error(f"Not utxos found in the address provided")
                 rawResult = None
-            return rawResult
         except TypeError:
             self.LOGGER.error(f"Missing required arguments")
+            rawResult = None
         except AssertionError:
             self.LOGGER.error(f"Errors in the message dictionary format. Check {v.errors}") # type: ignore
+            rawResult = None
         except Exception:
             self.LOGGER.error(f"Errors while building the transaction. Probably insufficient ada or native asset funds")
+            rawResult = None
+        
+        return rawResult
 
-    def analyze_tx(self, tx_name_file):
+    def analyze_tx_body(self):
         print('Analyzing the transaction....')
         command_string = [
             self.CARDANO_CLI_PATH,
             'transaction', 'view',
-            '--tx-body-file', self.TRANSACTION_PATH_FILE + '/' + tx_name_file]
+            '--tx-body-file', self.TRANSACTION_PATH_FILE + '/tx.draft']
+
+        rawResult = self.execute_command(command_string, None)
+        self.LOGGER.info(rawResult)
+        return rawResult
+
+    def analyze_tx_signed(self):
+        print('Analyzing the transaction....')
+        command_string = [
+            self.CARDANO_CLI_PATH,
+            'transaction', 'view',
+            '--tx-file', self.TRANSACTION_PATH_FILE + '/tx.signed']
 
         rawResult = self.execute_command(command_string, None)
         self.LOGGER.info(rawResult)
@@ -1250,7 +1335,7 @@ class Keys(Starter):
         print("Key hash of the verification payment key: '%s'" % (key_hash))
         return key_hash
 
-    def deriveAllKeys(self, name, **kwargs):
+    def deriveAllKeys(self, name: str, **kwargs) -> dict:
         """This function creates all the keys and addresses and save them
         in root_folder/priv/wallet/walletname path
 
@@ -1314,22 +1399,30 @@ class Keys(Starter):
             'stake_account_key': stake_public_account_key,
             'payment_addr': payment_address,
             'payment_addr_path': payment_addr_path,
+            'payment_skey': payment_skey,
             'payment_skey_path': payment_skey_path,
+            'payment_vkey': payment_vkey,
             'payment_vkey_path': payment_vkey_path,
+            'stake_addr': stake_addr,
+            'stake_skey': stake_skey,
             'stake_skey_path': stake_skey_path,
+            'stake_vkey': stake_vkey,
             'stake_vkey_path': stake_vkey_path,
             'stake_addr_path': stake_addr_path,
-            'base_addr_path': base_addr,
+            'base_addr': base_addr,
             'hash_verification_key': hash_verification_key,
         }
+        if kwargs.get('save_flag'):
+            with open(self.path + '/' + name + '/' + name + '.json', 'w') as file:
+                json.dump(keys, file, indent=4, ensure_ascii=False)
 
-        with open(self.path + '/' + name + '/' + name + '.json', 'w') as file:
-            json.dump(keys, file, indent=4, ensure_ascii=False)
-
-        print("##################################")
-        print("Find all the keys and address details in: %s" %
-              (self.path + '/' + name + '/' + name + '.json'))
-        print("##################################")
+            print("##################################")
+            print("Find all the keys and address details in: %s" %
+                (self.path + '/' + name + '/' + name + '.json'))
+            print("##################################")
+        else:
+            remove_folder(self.path + '/' + name)
+            self.LOGGER.debug(f"Keys info were not saved locally")
         return keys
 
     def generateCardanoKeys(self, name):
