@@ -1,9 +1,16 @@
 [tool.poetry]
 name = "cardanopythonlib"
-version = "0.1.0"
-description = ""
-authors = ["larestrepo <larestrepomu@gmail.com>"]
+version = "1.0.4"
+description = "Cardano Python lib to interact with the blockchain"
+authors = ["Moxie <luis.restrepo@ayllu.io>"]
 readme = "README.md"
+license = "Apache-2.0"
+repository = "https://github.com/larestrepo/CardanoPythonLib"
+keywords = ["cardano", "blockchain", "python", "backend"]
+include = [
+"LICENSE",
+"config/cardano_config.ini",
+]
 
 [tool.poetry.dependencies]
 python = "^3.9"
