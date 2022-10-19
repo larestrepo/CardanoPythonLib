@@ -6,6 +6,8 @@ from cardanopythonlib import base
 
 node = base.Node()
 
+print(node.query_tip_exec())
+
 print(node.MINT_FOLDER)
 # node.create_simple_script('MyFirstMultiSig','mint', 'all', 1, ['80b34df2162e9c4a38ce63322a8f903c9455a0bebd64c02cf1f3222a'])
 parameters = {
@@ -15,10 +17,10 @@ parameters = {
     "hashes": ["80b34df2162e9c4a38ce63322a8f903c9455a0bebd64c02cf1f3222a"],
     "type_time": "before",
     "slot": 4983000,
-    "purpose": "mint"
-    }
+    "purpose": "mint",
+}
 node.create_simple_script(parameters=parameters)
-node.create_policy_id('mint','Myfinaltest')
+node.create_policy_id("mint", "Myfinaltest")
 # policyid = node.create_policy_id("MyFirstMultiSig", 'mint')
 # print(policyid)
 # print(node.query_protocol())
@@ -89,7 +91,7 @@ node.create_policy_id('mint','Myfinaltest')
 #                     "policyID": "ea3f8733d3fdf9b1b1efb5ed8559d337e46ef2b6a6f496e01f33c271"
 #                 }
 #             ]
-         
+
 #         },
 #       ]
 # # address_destin = None
@@ -151,7 +153,7 @@ node.create_policy_id('mint','Myfinaltest')
 #         "unit": "lovelace"
 #       },
 #       "assets": [
-        
+
 #       ]
 #     }
 #   ],
@@ -163,15 +165,19 @@ node.create_policy_id('mint','Myfinaltest')
 # }
 
 params = {
-    'address_origin': 'addr_test1vzqtxn0jzchfcj3cee3ny250jq7fg4dqh67kfspv78ejy2scj24vv', 
-    'address_destin': [{'address': 'addr_test1qrhdv4zc4mqpkh6qsvp3chgu9kluz9ctyex0kmklja9upwnnw0ll60v9pxn8507976e6w5rwvkm988jw0mhlyujrzt0s0n2udv', 'amount': {'quantity': 25000000, 'unit': 'lovelace'}, 'assets': []}], 
-    'change_address': 'addr_test1vzqtxn0jzchfcj3cee3ny250jq7fg4dqh67kfspv78ejy2scj24vv', 
-    'metadata': {'1337': {
-        'name': 'hello world',
-        'completed': 0
-    }}, 
-    'mint': None, 
-    'script_path': None, 
-    'witness': 1}
+    "address_origin": "addr_test1vzqtxn0jzchfcj3cee3ny250jq7fg4dqh67kfspv78ejy2scj24vv",
+    "address_destin": [
+        {
+            "address": "addr_test1qrhdv4zc4mqpkh6qsvp3chgu9kluz9ctyex0kmklja9upwnnw0ll60v9pxn8507976e6w5rwvkm988jw0mhlyujrzt0s0n2udv",
+            "amount": {"quantity": 25000000, "unit": "lovelace"},
+            "assets": [],
+        }
+    ],
+    "change_address": "addr_test1vzqtxn0jzchfcj3cee3ny250jq7fg4dqh67kfspv78ejy2scj24vv",
+    "metadata": {"1337": {"name": "hello world", "completed": 0}},
+    "mint": None,
+    "script_path": None,
+    "witness": 1,
+}
 
 result = node.build_tx_components(params)

@@ -1,11 +1,14 @@
 import json
 import os
+import sys
 import unittest
 import uuid
 
 from cardanopythonlib import base
 from cardanopythonlib.path_utils import config, remove_folder
 
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "config"))
+WORKING_DIR = os.path.dirname(__file__)
 
 class TestLibrary(unittest.TestCase):
     def setUp(self):
@@ -28,6 +31,8 @@ class TestLibrary(unittest.TestCase):
             "cardano_network",
             "transaction_path_file",
             "keys_file_path",
+            "scripts_file_path",
+            "cardano_era",
             "url",
         ]
         params = config(self.config_path, "node")
@@ -36,10 +41,12 @@ class TestLibrary(unittest.TestCase):
 
     def test_env_variables_value(self):
 
+        KEYS_FILE_PATH = self.starter.KEYS_FILE_PATH
+        SCRIPTS_FILE_PATH = self.starter.SCRIPTS_FILE_PATH
         CARDANO_CLI_PATH = self.starter.CARDANO_CLI_PATH
         CARDANO_NETWORK = self.starter.CARDANO_NETWORK
         TRANSACTION_PATH_FILE = self.starter.TRANSACTION_PATH_FILE
-        KEYS_FILE_PATH = self.starter.KEYS_FILE_PATH
+        CARDANO_ERA = self.starter.CARDANO_ERA
         URL = self.starter.URL
 
         self.assertNotEqual(CARDANO_CLI_PATH, "", f"cardano_cli should not be empty")
@@ -51,11 +58,11 @@ class TestLibrary(unittest.TestCase):
             network_list,
             f"Cardano_network param should be one of those: {network_list}",
         )
-        self.assertNotEqual(
-            TRANSACTION_PATH_FILE, "", f"Transaction_path_file should not be empty"
-        )
+        self.assertNotEqual(TRANSACTION_PATH_FILE, "", f"Transaction_path_file should not be empty")
         self.assertNotEqual(KEYS_FILE_PATH, "", "Keys_file_path should not be empty")
         self.assertNotEqual(URL, "", "URL should not be empty")
+        self.assertNotEqual(SCRIPTS_FILE_PATH, "", "SCRIPTS_FILE_PATH should not be empty")
+        self.assertNotEqual(CARDANO_ERA, "", "CARDANO_ERA should not be empty")
 
     def test_min_utxo_lovelace(self):
         utxoCostPerWord = 34482  # from protocol params
@@ -150,7 +157,7 @@ class TestLibrary(unittest.TestCase):
             "Problem with stake_addr_path",
         )
         self.assertTrue(
-            key["base_addr_path"].startswith("addr"), "Problem with base_addr_path"
+            key["base_addr"].startswith("addr"), "Problem with base_addr_path"
         )
         self.assertEqual(
             len(key["hash_verification_key"]), 56, "Problem with hash_verification_key"
@@ -217,7 +224,7 @@ class TestLibrary(unittest.TestCase):
             "Problem with stake_addr_path",
         )
         self.assertTrue(
-            key["base_addr_path"].startswith("addr"), "Problem with base_addr_path"
+            key["base_addr"].startswith("addr"), "Problem with base_addr_path"
         )
         self.assertEqual(
             len(key["hash_verification_key"]), 56, "Problem with hash_verification_key"

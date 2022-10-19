@@ -1,17 +1,20 @@
 import json
 import os
+import sys
 import unittest
 import uuid
 
 from cardanopythonlib import base
 from cardanopythonlib.path_utils import remove_file, remove_folder
 
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "config"))
+WORKING_DIR = os.path.dirname(__file__)
 
 class TestLibrary(unittest.TestCase):
     def setUp(self):
         self.config_path = "./config/cardano_config.ini"
         self.starter = base.Starter(self.config_path)
-        self.node = base.Node()
+        self.node = base.Node(self.config_path)
 
     #####################################
     # This is the start of the section to test Starter class and Keys class
@@ -20,7 +23,7 @@ class TestLibrary(unittest.TestCase):
     def test_query_tip_exec(self):
         tip = self.node.query_tip_exec()
         self.assertIs(type(tip), dict, "Verify that your node is running")
-        self.assertEqual(tip["era"], "Alonzo", "Verify that your node is in Alonzo era")
+        self.assertEqual(tip["era"], "Babbage", "Verify that your node is in Alonzo era")
         self.assertEqual(
             tip["syncProgress"],
             "100.00",
@@ -30,7 +33,7 @@ class TestLibrary(unittest.TestCase):
     def test_query_protocol_params(self):
         saving_path = "./.priv/transactions"
         protocol = self.node.query_protocol(saving_path)
-        self.assertEqual(
+        self.assertNotEqual(
             protocol,
             "",
             "problems with the command execution, check that cardano cli and cardano node are properly configured",
@@ -88,11 +91,23 @@ class TestLibrary(unittest.TestCase):
             "955df18bcefaf6f7b956c2299633a75dfd3153451a56bd9676fd58a7",
             "0696c8e9b0a0f0990fcf2a189fa1436b17c162a5fa93783381a6fc61",
         ]
-        multisig_script = self.node.create_simple_script(
-            script_name, type, required, hashes
-        )
+        type_time = "before"
+        slot = self.node.query_tip_exec()["slot"] + 20000
+        purpose = "mint"
+        parameters = {
+            "name": script_name,
+            "type": type,
+            "required": required,
+            "hashes": hashes,
+            "type_time": type_time,
+            "slot": slot,
+            "purpose": purpose
+        }
+        multisig_script, policyID = self.node.create_simple_script(parameters=parameters)
         try:
             assert multisig_script != None
+            assert policyID != None
+
             self.assertEqual(
                 multisig_script["type"], type, "Review the type of the multisig script"
             )
@@ -114,16 +129,17 @@ class TestLibrary(unittest.TestCase):
                 "Review that the number of wallets corresponds",
             )
 
-            policyID = self.node.create_policy_id(script_name)
-            keys_file_path = self.starter.KEYS_FILE_PATH + "/" + script_name
-            file_exists = os.path.exists(keys_file_path)
-            remove_folder("./.priv/wallets/" + script_name)
+            script_file_path = self.starter.MINT_FOLDER
+            self.assertIn(purpose, script_file_path)
+            # keys_file_path = self.starter.KEYS_FILE_PATH + "/" + script_name
+            file_exists = os.path.exists(script_file_path)
+            remove_folder(script_file_path + script_name)
             self.assertEqual(
                 len(policyID.split(" ")), 1, f"Verify the existence of the script file"
             )
             self.assertTrue(
                 file_exists,
-                f"Verify the creation of the policy script file in {keys_file_path}",
+                f"Verify the creation of the policy script file in {script_file_path}",
             )
             self.assertEqual(
                 len(policyID), 56, "Problem with the generation of the PolicyID"
