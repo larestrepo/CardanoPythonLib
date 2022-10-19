@@ -2,15 +2,15 @@
 Utils submodule related with path and files on system
 """
 
-# General imports
-import sys
+import json
+import logging
 import os
 import shutil
-import logging
+# General imports
+import sys
+from configparser import ConfigParser
 from pathlib import Path
 from typing import Union
-import json
-from configparser import ConfigParser
 
 
 def get_root_path() -> str:
