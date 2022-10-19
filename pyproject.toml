@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "cardanopythonlib"
+version = "0.1.0"
+description = ""
+authors = ["larestrepo <larestrepomu@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+
+
+[tool.poetry.group.dev.dependencies]
+flake8 = "^5.0.4"
+mypy = "^0.982"
+black = "^22.10.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

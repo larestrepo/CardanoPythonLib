@@ -153,13 +153,17 @@ address_origin ='addr_test1qp3hc694xtngj6vt4kgxppqz5807kxyy737l4s7n35vmhgrjkcctz
 metadata = None
 witness = 1
 params = {
-    "address_origin": address_origin,
-    "address_destin": None,
-    "change_address": address_origin,
-    "metadata": None,
-    "mint": None,
-    "script_path": None,
-    "witness": witness,
+    "message": {
+        "tx_info": {
+            "address_origin": address_origin,
+            "address_destin": None,
+            "change_address": address_origin,
+            "metadata": None,
+            "mint": None,
+            "script_path": None,
+            "witness": witness,
+        }
+    }
 }
 
 result = node.build_tx_components(params)
