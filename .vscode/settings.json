@@ -1,8 +1,12 @@
 {
+    "python.linting.pylintEnabled": false,
     "python.linting.flake8Enabled": false,
     "python.linting.enabled": true,
     "python.linting.lintOnSave": true,
+    "python.formatting.provider": "black",
+    "editor.formatOnSave": false,
     "python.linting.flake8Args": [
+        "--max-line-length=88",
         "--ignore=E501",
     ],
     "python.languageServer": "Pylance",
@@ -13,14 +17,9 @@
         "-p",
         "*_test.py"
     ],
-    "python.testing.pytestEnabled": false,
-    "python.testing.unittestEnabled": true,
-    "editor.quickSuggestionsDelay": 1000,
-    "editor.quickSuggestions":{
-        "other": "on",
-        "comments": "off",
-        "strings": "off"
-    },
-    "editor.parameterHints.enabled" : false,
-
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestArgs": [
+        "tests"
+    ],
 }

@@ -69,7 +69,12 @@ venv.bak/
 
 
 #My files
+cardano_config copy.ini
+cardano_config copy.json
+iot.py
 
 #Cardano
 .priv
 main.py
+main.py
+docs/poetry_setup.md
