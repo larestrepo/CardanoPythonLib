@@ -23,7 +23,7 @@ from data_utils import getlogger
 from path_utils import (config, create_folder, remove_file, remove_folder,
                         save_file, save_metadata)
 
-CARDANO_CONFIGS = "./config/cardano_config.ini"
+CARDANO_CONFIGS = f"{WORKING_DIR}/config/cardano_config.ini"
 
 
 class Starter:

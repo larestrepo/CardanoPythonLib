@@ -7,12 +7,11 @@ import uuid
 from cardanopythonlib import base
 from cardanopythonlib.path_utils import remove_file, remove_folder
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "config"))
-WORKING_DIR = os.path.dirname(__file__)
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "cardanopythonlib"))
 
 class TestLibrary(unittest.TestCase):
     def setUp(self):
-        self.config_path = "./config/cardano_config.ini"
+        self.config_path = "cardanopythonlib/config/cardano_config.ini"
         self.starter = base.Starter(self.config_path)
         self.node = base.Node(self.config_path)
 

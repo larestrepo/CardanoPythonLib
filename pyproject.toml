@@ -8,7 +8,6 @@ license = "Apache-2.0"
 repository = "https://github.com/larestrepo/CardanoPythonLib"
 keywords = ["cardano", "blockchain", "python", "backend"]
 include = [
-"LICENSE",
 "config/cardano_config.ini",
 ]
 
