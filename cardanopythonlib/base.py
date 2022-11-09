@@ -766,6 +766,7 @@ class Node(Starter):
                             "type": {"type": "string", "required": True},
                             "slot": {"type": "integer", "required": True},
                         },
+                        "nullable": True,
                     },
                     "tokens": {
                         "type": "list",
@@ -1353,13 +1354,10 @@ class Keys(Starter):
         ]
 
         self.execute_command(command_string, None)
-        # if rawResult == '':
-        #     print("Generate extended public account key xpub: '%s'" % (self.path + '/' + name + '/' + name + \
-        #           '.payment.skey'))
 
         output = self.cat_files(self.path, "/" + name + "/" + name + ".payment.skey")
         payment_skey = output.communicate()[0].decode("utf-8")
-        # output.stdout.close()
+        payment_skey = json.loads(payment_skey)
 
         # Get verification payment key from signing payment key.
         command_string = [
@@ -1372,9 +1370,6 @@ class Keys(Starter):
             self.path + "/" + name + "/" + name + ".payment.evkey",
         ]
         self.execute_command(command_string, None)
-        # if rawResult == '':
-        #     print("Get verification payment key from signing payment key: '%s'" % (self.path + '/' + name + '/' \
-        #               + name + '.payment.evkey'))
 
         # Get non-extended verification payment key
         # from extended verification payment key.
@@ -1388,13 +1383,10 @@ class Keys(Starter):
             self.path + "/" + name + "/" + name + ".payment.vkey",
         ]
         self.execute_command(command_string, None)
-        # if rawResult == '':
-        #     print("Get non-extended verification payment key: '%s'" % (self.path + '/' + name + '/' + name + \
-        #               '.payment.vkey'))
 
         output = self.cat_files(self.path, "/" + name + "/" + name + ".payment.vkey")
         payment_vkey = output.communicate()[0].decode("utf-8")
-        # output.stdout.close()
+        payment_vkey = json.loads(payment_vkey)
 
         # Build payment addresses
         command_string = [
@@ -1418,7 +1410,6 @@ class Keys(Starter):
 
         output = self.cat_files(self.path, "/" + name + "/" + name + ".payment.addr")
         payment_addr = output.communicate()[0].decode("utf-8")
-        # output.stdout.close()
 
         print(
             "Payment signing key: '%s' \n Payment verification key: '%s' \n Payment address: '%s"
@@ -1457,7 +1448,8 @@ class Keys(Starter):
         self.execute_command(command_string, None)
         output = self.cat_files(self.path, "/" + name + "/" + name + ".stake.skey")
         stake_skey = output.communicate()[0].decode("utf-8")
-        # output.stdout.close()
+        stake_skey = json.loads(stake_skey)
+
         # Get verification stake key from signing stake key.
         command_string = [
             self.CARDANO_CLI_PATH,
@@ -1484,7 +1476,7 @@ class Keys(Starter):
         self.execute_command(command_string, None)
         output = self.cat_files(self.path, "/" + name + "/" + name + ".stake.vkey")
         stake_vkey = output.communicate()[0].decode("utf-8")
-        # output.stdout.close()
+        stake_vkey = json.loads(stake_vkey)
 
         # Build stake addresses
         command_string = [
@@ -1551,7 +1543,7 @@ class Keys(Starter):
         self.execute_command(command_string, None)
         output = self.cat_files(self.path, "/" + name + "/" + name + ".base.addr")
         base_addr = output.communicate()[0].decode("utf-8")
-        # output.stdout.close()
+        
         remove_file(self.path, "/temp_payment.vkey")
         remove_file(self.path, "/temp_stake.vkey")
         print("Base address: '%s'" % (base_addr))
