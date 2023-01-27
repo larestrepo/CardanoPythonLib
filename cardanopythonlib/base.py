@@ -12,7 +12,7 @@ import sys
 from base64 import b16encode
 from itertools import chain, groupby
 from operator import itemgetter
-from typing import Tuple, Union
+from typing import Tuple, Union, List
 
 from cerberus import Validator
 
@@ -638,7 +638,7 @@ class Node(Starter):
         self.LOGGER.info(f"PolicyID is: {policyID}")
         return policyID
 
-    def sign_transaction(self, *args):
+    def sign_transaction(self, keys_name: List[str])-> Union[str, None]:
         """Sign the transaction based on tx_raw file.
          *args: represents the number of declared witness keys required to sign the transaction
         Example: sign_transaction(wallet1, wallet2). Two witnesses, transaction will be signed by wallet1 and wallet2.
@@ -654,14 +654,14 @@ class Node(Starter):
         ]
         index = 5
         i = 0
-        for arg in args:
+        for key in keys_name:
             command_string, index = self.insert_command(
                 i + 5,
                 1,
                 command_string,
                 [
                     "--signing-key-file",
-                    self.KEYS_FILE_PATH + "/" + arg + "/" + arg + ".payment.skey",
+                    self.KEYS_FILE_PATH + "/" + key + "/" + key + ".payment.skey",
                 ],
             )
             i = i + index
@@ -731,13 +731,13 @@ class Node(Starter):
                     "schema": {
                         "address": {"type": "string", "required": True},
                         "amount": {"type": "integer"},
-                        "assets": {
+                        "tokens": {
                             "type": "list",
                             "nullable": True,
                             "schema": {
                                 "type": "dict",
                                 "schema": {
-                                    "asset_name": {"type": "string", "required": True},
+                                    "name": {"type": "string", "required": True},
                                     "amount": {"type": "integer", "required": True},
                                     "policyID": {"type": "string", "required": True},
                                 },
@@ -877,69 +877,75 @@ class Node(Starter):
                         # else:
                         #     quantity = 0
                         if (
-                            address_destin.get("assets") is not None
-                            and address_destin.get("assets") != []
+                            address_destin.get("tokens") is not None
+                            and address_destin.get("tokens") != []
                         ):
-                            length_assets = len(address_destin.get("assets"))
-                            for asset in address_destin.get("assets"):
-                                asset_name = asset.get("asset_name").encode("utf-8")
+                            length_assets = len(address_destin.get("tokens"))
+                            asset_output_string = ""
+                            for asset in address_destin.get("tokens"):
+                                asset_name = asset.get("name").encode("utf-8")
                                 asset_name = b16encode(asset_name).decode("utf-8")
                                 asset_name = asset_name.lower()
                                 total_asset_name_len += len(asset_name)
                                 amount = asset.get("amount")
                                 policyID = asset.get("policyID")
                                 asset_full_name = policyID + "." + asset_name
-                                if asset_full_name in addr_origin_balance:
-                                    asset_balance = addr_origin_balance.get(
-                                        asset_full_name
+                                if mint is not None: 
+                                    asset_output_string += (
+                                        str(amount) + " " + asset_full_name + "+"
                                     )
-                                    if amount <= asset_balance:
-                                        TxHash_in, amount_equal = self.utxo_selection(
-                                            addr_origin_tx,
-                                            amount,
-                                            False,
-                                            asset_full_name,
-                                            minting,
+                                else:
+                                    if asset_full_name in addr_origin_balance:
+                                        asset_balance = addr_origin_balance.get(
+                                            asset_full_name
                                         )
-                                        asset_output_string += (
-                                            str(amount) + " " + asset_full_name + "+"
-                                        )
-                                        TxHash_in_asset += TxHash_in
+                                        if amount <= asset_balance:
+                                            TxHash_in, amount_equal = self.utxo_selection(
+                                                addr_origin_tx,
+                                                amount,
+                                                False,
+                                                asset_full_name,
+                                                minting,
+                                            )
+                                            asset_output_string += (
+                                                str(amount) + " " + asset_full_name + "+"
+                                            )
+                                            TxHash_in_asset += TxHash_in
+                                        else:
+                                            self.LOGGER.error(
+                                                f"Balance not enough asset_balance: {asset_balance}, amount: {amount}"
+                                            )
+                                            raise Exception()
                                     else:
                                         self.LOGGER.error(
-                                            f"Balance not enough asset_balance: {asset_balance}, amount: {amount}"
+                                            f"{asset_full_name} could not be found in wallet origin"
                                         )
                                         raise Exception()
+                                asset_output_string = asset_output_string[:-1]
+                                min_utxo_value = self.min_utxo_lovelace(
+                                    length_mint + length_assets,
+                                    total_mint_name_len + total_asset_name_len,
+                                    utxoCostPerWord,
+                                    "",
+                                )
+                                if quantity == 0:
+                                    quantity = min_utxo_value
+                                if quantity >= min_utxo_value:
+                                    quantity_array.append(quantity)
+                                    addr_output_array.append("--tx-out")
+                                    addr_output_array.append(
+                                        address_destin.get("address")
+                                        + "+"
+                                        + str(quantity)
+                                        + "+"
+                                        + asset_output_string
+                                        # + mint_output_string
+                                    )
                                 else:
                                     self.LOGGER.error(
-                                        f"{asset_full_name} could not be found in wallet origin"
+                                        f"Quantity to send less than min_utxo_value of: {min_utxo_value}"
                                     )
                                     raise Exception()
-                            asset_output_string = asset_output_string[:-1]
-                            min_utxo_value = self.min_utxo_lovelace(
-                                length_mint + length_assets,
-                                total_mint_name_len + total_asset_name_len,
-                                utxoCostPerWord,
-                                "",
-                            )
-                            if quantity == 0:
-                                quantity = min_utxo_value
-                            if quantity >= min_utxo_value:
-                                quantity_array.append(quantity)
-                                addr_output_array.append("--tx-out")
-                                addr_output_array.append(
-                                    address_destin.get("address")
-                                    + "+"
-                                    + str(quantity)
-                                    + "+"
-                                    + asset_output_string
-                                    + mint_output_string
-                                )
-                            else:
-                                self.LOGGER.error(
-                                    f"Quantity to send less than min_utxo_value of: {min_utxo_value}"
-                                )
-                                raise Exception()
                         else:
                             min_utxo_value = self.min_utxo_lovelace(
                                 length_mint + length_assets,
@@ -1164,7 +1170,6 @@ class Node(Starter):
             )
 
         return rawResult
-
 
 class Keys(Starter):
     def __init__(self, config_path=CARDANO_CONFIGS):

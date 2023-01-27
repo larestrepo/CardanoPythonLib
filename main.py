@@ -10,17 +10,17 @@ print(node.query_tip_exec())
 
 print(node.MINT_FOLDER)
 # node.create_simple_script('MyFirstMultiSig','mint', 'all', 1, ['80b34df2162e9c4a38ce63322a8f903c9455a0bebd64c02cf1f3222a'])
-parameters = {
-    "name": "Myfinaltest",
-    "type": "atLeast",
-    "required": 1,
-    "hashes": ["80b34df2162e9c4a38ce63322a8f903c9455a0bebd64c02cf1f3222a"],
-    "type_time": "before",
-    "slot": 4983000,
-    "purpose": "mint",
-}
-node.create_simple_script(parameters=parameters)
-node.create_policy_id("mint", "Myfinaltest")
+# parameters = {
+#     "name": "Myfinaltest",
+#     "type": "atLeast",
+#     "required": 1,
+#     "hashes": ["80b34df2162e9c4a38ce63322a8f903c9455a0bebd64c02cf1f3222a"],
+#     "type_time": "before",
+#     "slot": 4983000,
+#     "purpose": "mint",
+# }
+# node.create_simple_script(parameters=parameters)
+# node.create_policy_id("mint", "Myfinaltest")
 # policyid = node.create_policy_id("MyFirstMultiSig", 'mint')
 # print(policyid)
 # print(node.query_protocol())
@@ -126,7 +126,52 @@ node.create_policy_id("mint", "Myfinaltest")
 #     }
 # }
 
-# result = node.build_tx_components(params)
+params =   {
+  "address_origin": "addr_test1vpsudqpk00kn4g6qzwm24re8gvtc2lvg2yr4gm52pu89wfqd7n25a",
+  "address_destin": [
+    {
+      "address": "addr_test1qz37wr0plpncl8ewpj305t0ysmrpgk6ef5r2lcmkq0gdrhw5fy5y35v9tscc8s6djv55yld5x29m6twdkeuzuqjmnx2s57fre9",
+      "amount": 2000000,
+      "tokens": [
+        {
+          "name": "ayllu",
+          "amount": 123,
+          "policyID": "e58ae630bfa049e1a5232bb69e4d0c8e85aaa03d5a304ac443a2e9a2"
+        }
+      ]
+    },
+    {
+      "address": "addr_test1qp9pqrswvsfkqd5kmurs7lvlv65jq9l2mefjtnsx3y5uwvepetzja2kx6fwmlcasy995ppa5yhdr2sksfgas63d846hshmc704",
+      "amount": 2000000,
+      "tokens": [
+        {
+          "name": "ayllu",
+          "amount": 12,
+          "policyID": "e58ae630bfa049e1a5232bb69e4d0c8e85aaa03d5a304ac443a2e9a2"
+        }
+      ]
+    }
+  ],
+  "change_address": "addr_test1qz6xn4nsf9qh44pf327heujp0aq0n2vl4fu37sgl4uxstpfpetzja2kx6fwmlcasy995ppa5yhdr2sksfgas63d846hskdgyvu",
+  "metadata": {},
+  "mint": {
+    "policyID": "e58ae630bfa049e1a5232bb69e4d0c8e85aaa03d5a304ac443a2e9a2",
+    "policy_path": "./.priv/scripts/mint/aylluMinting.script",
+    "validity_interval": None,
+    "tokens": [
+      {
+        "name": "ayllu",
+        "amount": 135
+      }
+    ]
+  },
+  "script_path": "./.priv/scripts/mint/aylluMinting.script",
+  "witness": 2
+}
+
+result = node.build_tx_components(params)
+
+print(result)
 
 # # sign_address_name = 'wallet01'
 # result = node.sign_transaction(wallet_name)

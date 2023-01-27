@@ -72,6 +72,7 @@ venv.bak/
 cardano_config copy.ini
 cardano_config copy.json
 iot.py
+cardanopythonlib/temps_test.json
 
 #Cardano
 .priv

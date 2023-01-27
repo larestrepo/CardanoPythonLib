@@ -10,7 +10,7 @@ import shutil
 import sys
 from configparser import ConfigParser
 from pathlib import Path
-from typing import Union
+from typing import Union, Any
 
 
 def get_root_path() -> str:
@@ -198,14 +198,14 @@ def remove_file(path: str, name: str) -> None:
     if os.path.exists(path+name):
         os.remove(path+name)
 
-def save_metadata(path, name, metadata):
+def save_metadata(path: str, file_name: str, metadata: Any):
     create_folder(path)
     if metadata == {}:
         metadata_json_file = ''
     else:
-        with open(path + '/' + name, 'w') as file:
+        with open(path + '/' + file_name, 'w') as file:
             json.dump(metadata, file, indent=4, ensure_ascii=False)
-        metadata_json_file = path + '/' + name
+        metadata_json_file = path + '/' + file_name
 
     return metadata_json_file
 
