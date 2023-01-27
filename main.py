@@ -126,52 +126,52 @@ print(node.MINT_FOLDER)
 #     }
 # }
 
-params =   {
-  "address_origin": "addr_test1vpsudqpk00kn4g6qzwm24re8gvtc2lvg2yr4gm52pu89wfqd7n25a",
-  "address_destin": [
-    {
-      "address": "addr_test1qz37wr0plpncl8ewpj305t0ysmrpgk6ef5r2lcmkq0gdrhw5fy5y35v9tscc8s6djv55yld5x29m6twdkeuzuqjmnx2s57fre9",
-      "amount": 2000000,
-      "tokens": [
-        {
-          "name": "ayllu",
-          "amount": 123,
-          "policyID": "e58ae630bfa049e1a5232bb69e4d0c8e85aaa03d5a304ac443a2e9a2"
-        }
-      ]
-    },
-    {
-      "address": "addr_test1qp9pqrswvsfkqd5kmurs7lvlv65jq9l2mefjtnsx3y5uwvepetzja2kx6fwmlcasy995ppa5yhdr2sksfgas63d846hshmc704",
-      "amount": 2000000,
-      "tokens": [
-        {
-          "name": "ayllu",
-          "amount": 12,
-          "policyID": "e58ae630bfa049e1a5232bb69e4d0c8e85aaa03d5a304ac443a2e9a2"
-        }
-      ]
-    }
-  ],
-  "change_address": "addr_test1qz6xn4nsf9qh44pf327heujp0aq0n2vl4fu37sgl4uxstpfpetzja2kx6fwmlcasy995ppa5yhdr2sksfgas63d846hskdgyvu",
-  "metadata": {},
-  "mint": {
-    "policyID": "e58ae630bfa049e1a5232bb69e4d0c8e85aaa03d5a304ac443a2e9a2",
-    "policy_path": "./.priv/scripts/mint/aylluMinting.script",
-    "validity_interval": None,
-    "tokens": [
-      {
-        "name": "ayllu",
-        "amount": 135
-      }
-    ]
-  },
-  "script_path": "./.priv/scripts/mint/aylluMinting.script",
-  "witness": 2
-}
+# params =   {
+#   "address_origin": "addr_test1vpsudqpk00kn4g6qzwm24re8gvtc2lvg2yr4gm52pu89wfqd7n25a",
+#   "address_destin": [
+#     {
+#       "address": "addr_test1qz37wr0plpncl8ewpj305t0ysmrpgk6ef5r2lcmkq0gdrhw5fy5y35v9tscc8s6djv55yld5x29m6twdkeuzuqjmnx2s57fre9",
+#       "amount": 2000000,
+#       "tokens": [
+#         {
+#           "name": "ayllu",
+#           "amount": 123,
+#           "policyID": "e58ae630bfa049e1a5232bb69e4d0c8e85aaa03d5a304ac443a2e9a2"
+#         }
+#       ]
+#     },
+#     {
+#       "address": "addr_test1qp9pqrswvsfkqd5kmurs7lvlv65jq9l2mefjtnsx3y5uwvepetzja2kx6fwmlcasy995ppa5yhdr2sksfgas63d846hshmc704",
+#       "amount": 2000000,
+#       "tokens": [
+#         {
+#           "name": "ayllu",
+#           "amount": 12,
+#           "policyID": "e58ae630bfa049e1a5232bb69e4d0c8e85aaa03d5a304ac443a2e9a2"
+#         }
+#       ]
+#     }
+#   ],
+#   "change_address": "addr_test1qz6xn4nsf9qh44pf327heujp0aq0n2vl4fu37sgl4uxstpfpetzja2kx6fwmlcasy995ppa5yhdr2sksfgas63d846hskdgyvu",
+#   "metadata": {},
+#   "mint": {
+#     "policyID": "e58ae630bfa049e1a5232bb69e4d0c8e85aaa03d5a304ac443a2e9a2",
+#     "policy_path": "./.priv/scripts/mint/aylluMinting.script",
+#     "validity_interval": None,
+#     "tokens": [
+#       {
+#         "name": "ayllu",
+#         "amount": 135
+#       }
+#     ]
+#   },
+#   "script_path": "./.priv/scripts/mint/aylluMinting.script",
+#   "witness": 2
+# }
 
-result = node.build_tx_components(params)
+# result = node.build_tx_components(params)
 
-print(result)
+# print(result)
 
 # # sign_address_name = 'wallet01'
 # result = node.sign_transaction(wallet_name)
@@ -209,20 +209,47 @@ print(result)
 #   "witness": 1
 # }
 
-params = {
-    "address_origin": "addr_test1vzqtxn0jzchfcj3cee3ny250jq7fg4dqh67kfspv78ejy2scj24vv",
-    "address_destin": [
-        {
-            "address": "addr_test1qrhdv4zc4mqpkh6qsvp3chgu9kluz9ctyex0kmklja9upwnnw0ll60v9pxn8507976e6w5rwvkm988jw0mhlyujrzt0s0n2udv",
-            "amount": {"quantity": 25000000, "unit": "lovelace"},
-            "assets": [],
-        }
-    ],
-    "change_address": "addr_test1vzqtxn0jzchfcj3cee3ny250jq7fg4dqh67kfspv78ejy2scj24vv",
-    "metadata": {"1337": {"name": "hello world", "completed": 0}},
-    "mint": None,
-    "script_path": None,
-    "witness": 1,
+# result = node.analyze_tx_body()
+# result = node.analyze_tx_signed()
+# result = node.get_txid_body()
+result = node.get_tx_info("9900f38bb17ed9a91111f5de61a9e8a4a540f85b0af4d0804a83ad3ee1fccefa",0)
+print(result)
+
+import json
+with open('./.priv/transactions/tx_info.json', 'r') as file:
+  tx_info = json.load(file)
+
+print(tx_info)
+
+address_origin = 'addr_test1vpsudqpk00kn4g6qzwm24re8gvtc2lvg2yr4gm52pu89wfqd7n25a'
+# metadata = {"1337": {"name": "hello world", "completed": 0}}
+address_destin_no_tokens = [
+  {
+      "address": "addr_test1vp9pqrswvsfkqd5kmurs7lvlv65jq9l2mefjtnsx3y5uwvcahgzxk",
+      "amount": 3000000,
+      "tokens": [],
+  }]
+inline_datum = {
+    "constructor": 0,
+    "fields": [{
+"int": 42
+    }]
 }
 
+params = {
+            "address_origin": address_origin,
+            "address_destin": address_destin_no_tokens,
+            "change_address": address_origin,
+            # "metadata": metadata,
+            # "mint": None,
+            # "script_path": None,
+            # "witness": 1,
+            "inline_datum": inline_datum,
+        }
+
 result = node.build_tx_components(params)
+print(result)
+
+sign_address_name = 'AylluPayment'
+result = node.sign_transaction([sign_address_name])
+result = node.submit_transaction()

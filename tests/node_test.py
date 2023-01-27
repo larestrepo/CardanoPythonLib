@@ -9,11 +9,26 @@ from cardanopythonlib.path_utils import remove_file, remove_folder
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "cardanopythonlib"))
 
+
 class TestLibrary(unittest.TestCase):
     def setUp(self):
         self.config_path = "cardanopythonlib/config/cardano_config.ini"
         self.starter = base.Starter(self.config_path)
         self.node = base.Node(self.config_path)
+        self.address_origin = 'addr_test1vpsudqpk00kn4g6qzwm24re8gvtc2lvg2yr4gm52pu89wfqd7n25a'
+        self.metadata = {"1337": {"name": "hello world", "completed": 0}}
+        self.address_destin_no_tokens = [
+                                {
+                                    "address": "addr_test1vp9pqrswvsfkqd5kmurs7lvlv65jq9l2mefjtnsx3y5uwvcahgzxk",
+                                    "amount": 3000000,
+                                    "tokens": [],
+                                }]
+        self.inline_datum = {
+                            "constructor": 0,
+                            "fields": [{
+                                "int": 42
+                            }]
+}
 
     #####################################
     # This is the start of the section to test Starter class and Keys class
@@ -146,33 +161,88 @@ class TestLibrary(unittest.TestCase):
         except AssertionError:
             print(f"Verify your required field")
 
-    def test_build_tx_components(self):
+    def test_build_tx(self):
         tx_file_path = self.starter.TRANSACTION_PATH_FILE
         remove_file(tx_file_path, "/tx.draft")
-        address_origin = (
-            "addr_test1vqrfdj8fkzs0pxg0eu4p38apgd430stz5hafx7pnsxn0ccg4jqkyd"
-        )
+        address_origin = self.address_origin
         params = {
-            "message": {
-                "tx_info": {
                     "address_origin": address_origin,
-                    "address_destin": None,
+                    # "address_destin": None,
                     "change_address": address_origin,
-                    "metadata": None,
-                    "mint": None,
-                    "script_path": None,
-                    "witness": 1,
+                    # "metadata": None,
+                    # "mint": None,
+                    # "script_path": None,
+                    # "witness": 1,
                 }
-            }
-        }
-        result = self.node.build_tx_components(params)
-        file_exists = os.path.exists(tx_file_path)
+        self.node.build_tx_components(params)
+
+        file_exists = os.path.exists(tx_file_path + "/tx.draft")
         remove_file(tx_file_path, "/tx.draft")
         self.assertTrue(
             file_exists,
             f"Verify the creation of the transaction draft file in {tx_file_path}",
         )
 
+    def test_build_tx_metadata(self):
+        tx_file_path = self.starter.TRANSACTION_PATH_FILE
+        remove_file(tx_file_path, "/tx.draft")
+        params = {
+                    "address_origin": self.address_origin,
+                    # "address_destin": None,
+                    "change_address": self.address_origin,
+                    "metadata": self.metadata,
+                    # "mint": None,
+                    # "script_path": None,
+                    # "witness": 1,
+                }
+        self.node.build_tx_components(params)
+        file_exists = os.path.exists(tx_file_path + "/tx.draft")
+        remove_file(tx_file_path, "/tx.draft")
+        self.assertTrue(
+            file_exists,
+            f"Verify the creation of the transaction draft file in {tx_file_path}",
+        )
 
+    def test_build_tx_destin_no_tokens(self):
+        tx_file_path = self.starter.TRANSACTION_PATH_FILE
+        remove_file(tx_file_path, "/tx.draft")
+        params = {
+                    "address_origin": self.address_origin,
+                    "address_destin": self.address_destin_no_tokens,
+                    "change_address": self.address_origin,
+                    "metadata": self.metadata,
+                    # "mint": None,
+                    # "script_path": None,
+                    # "witness": 1,
+                }
+        self.node.build_tx_components(params)
+        file_exists = os.path.exists(tx_file_path + "/tx.draft")
+        remove_file(tx_file_path, "/tx.draft")
+        self.assertTrue(
+            file_exists,
+            f"Verify the creation of the transaction draft file in {tx_file_path}",
+        )
+
+    def test_build_tx_inline(self):
+        tx_file_path = self.starter.TRANSACTION_PATH_FILE
+        remove_file(tx_file_path, "/tx.draft")
+        params = {
+                    "address_origin": self.address_origin,
+                    "address_destin": self.address_destin_no_tokens,
+                    "change_address": self.address_origin,
+                    "metadata": self.metadata,
+                    # "mint": None,
+                    # "script_path": None,
+                    # "witness": 1,
+                    "inline_datum": self.inline_datum,
+                }
+        self.node.build_tx_components(params)
+        file_exists = os.path.exists(tx_file_path + "/tx.draft")
+        self.assertTrue(
+            file_exists,
+            f"Verify the creation of the transaction draft file in {tx_file_path}",
+        )
+
+        remove_file(tx_file_path, "/tx.draft")
 if __name__ == "__main__":
     unittest.main()

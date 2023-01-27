@@ -20,8 +20,14 @@ from cerberus import Validator
 WORKING_DIR = os.path.dirname(__file__)
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "cardanopythonlib"))
 from data_utils import getlogger
-from path_utils import (config, create_folder, remove_file, remove_folder,
-                        save_file, save_metadata)
+from path_utils import (
+    config,
+    create_folder,
+    remove_file,
+    remove_folder,
+    save_file,
+    save_metadata,
+)
 
 CARDANO_CONFIGS = f"{WORKING_DIR}/config/cardano_config.ini"
 
@@ -112,8 +118,6 @@ class Starter:
         except Exception:
             rawResult = output.stderr.decode("utf-8")
 
-        # print(rawResult)
-        # self.LOGGER.info(rawResult)
         return rawResult
 
     def validate_address(self, address: str) -> bool:
@@ -161,6 +165,20 @@ class Starter:
         output = subprocess.Popen(command_string, stdout=subprocess.PIPE)
         return output
 
+    def insert_network(self, command_string: list, index: int, step: int) -> list:
+        if self.CARDANO_NETWORK == "testnet":
+            command_string, index = self.insert_command(
+                index,
+                step,
+                command_string,
+                ["--testnet-magic", self.CARDANO_NETWORK_MAGIC],
+            )
+        else:
+            command_string, index = self.insert_command(
+                index, step, command_string, ["--mainnet"]
+            )
+        return command_string
+
 
 class Node(Starter):
     """
@@ -199,7 +217,7 @@ class Node(Starter):
             address = wallet_name
         return address
 
-    def get_txid_body(self):
+    def get_txid_body(self) -> str:
 
         print("Executing get transaction ID from Tx.draft file")
         command_string = [
@@ -212,16 +230,24 @@ class Node(Starter):
         rawResult = self.execute_command(command_string, None)
         return rawResult
 
-    def get_txid_signed(self):
+    def get_tx_info(
+        self,
+        txOutRefId: str,
+        txOutRefIdx: int = 0,
+    ) -> str:
 
-        print("Executing get transaction ID from Tx.signed file")
+        print("Exploring the transaction info")
         command_string = [
             self.CARDANO_CLI_PATH,
-            "transaction",
-            "txid",
-            "--tx-file",
-            self.TRANSACTION_PATH_FILE + "/tx.signed",
+            "query",
+            "utxo",
+            "--tx-in",
+            txOutRefId + "#" + str(txOutRefIdx),
+            "--out-file",
+            self.TRANSACTION_PATH_FILE + "/tx_info.json",
         ]
+        command_string = self.insert_network(command_string, 5,1)
+        print(command_string)
         rawResult = self.execute_command(command_string, None)
         return rawResult
 
@@ -638,7 +664,7 @@ class Node(Starter):
         self.LOGGER.info(f"PolicyID is: {policyID}")
         return policyID
 
-    def sign_transaction(self, keys_name: List[str])-> Union[str, None]:
+    def sign_transaction(self, keys_name: List[str]) -> Union[str, None]:
         """Sign the transaction based on tx_raw file.
          *args: represents the number of declared witness keys required to sign the transaction
         Example: sign_transaction(wallet1, wallet2). Two witnesses, transaction will be signed by wallet1 and wallet2.
@@ -718,94 +744,26 @@ class Node(Starter):
     def build_tx_components(self, params):
 
         print("Building the transaction")
-        schema = {
-            "address_origin": {
-                "type": "string",
-                "required": True,
-            },
-            "address_destin": {
-                "type": "list",
-                "nullable": True,
-                "schema": {
-                    "type": "dict",
-                    "schema": {
-                        "address": {"type": "string", "required": True},
-                        "amount": {"type": "integer"},
-                        "tokens": {
-                            "type": "list",
-                            "nullable": True,
-                            "schema": {
-                                "type": "dict",
-                                "schema": {
-                                    "name": {"type": "string", "required": True},
-                                    "amount": {"type": "integer", "required": True},
-                                    "policyID": {"type": "string", "required": True},
-                                },
-                            },
-                        },
-                    },
-                },
-            },
-            "change_address": {
-                "type": "string",
-                "required": True,
-            },
-            "metadata": {
-                "type": "dict",
-                "nullable": True,
-            },
-            "mint": {
-                "type": "dict",
-                "nullable": True,
-                "schema": {
-                    "policyID": {"type": "string", "required": True},
-                    "policy_path": {"type": "string", "required": True},
-                    "validity_interval": {
-                        "type": "dict",
-                        "schema": {
-                            "type": {"type": "string", "required": True},
-                            "slot": {"type": "integer", "required": True},
-                        },
-                        "nullable": True,
-                    },
-                    "tokens": {
-                        "type": "list",
-                        "schema": {
-                            "type": "dict",
-                            "schema": {
-                                "name": {"type": "string", "required": True},
-                                "amount": {"type": "integer", "required": True},
-                            },
-                        },
-                    },
-                },
-            },
-            "script_path": {
-                "type": "string",
-                "nullable": True,
-            },
-            "witness": {
-                "type": "integer",
-                "required": True,
-            },
-        }
+        # Import schema for validation
+        from schemas import schema
+
         v = Validator()
         try:
             assert v.validate(params, schema)  # type: ignore
             # Unpacking the minimum required arguments
             address_origin = params.get("address_origin")
             change_address = params.get("change_address")
-
-            # Unpacking optional arguments
-            address_destin_array = params.get("address_destin")
-            metadata = params.get("metadata")
-            mint = params.get("mint")
-            script_path = params.get("script_path")
-            witness = params.get("witness")
-
             # Validate address
             address_origin = self.id_to_address(address_origin)
             change_address = self.id_to_address(change_address)
+
+            # Unpacking optional arguments
+            address_destin_array = params.get("address_destin", None)
+            metadata = params.get("metadata", None)
+            mint = params.get("mint", None)
+            script_path = params.get("script_path", None)
+            witness = params.get("witness", None)
+            inline_datum = params.get("inline_datum", None)
 
             self.query_protocol()
             with open(self.TRANSACTION_PATH_FILE + "/protocol.json", "r") as file:
@@ -870,12 +828,6 @@ class Node(Starter):
                         total_asset_name_len = 0
                         amount = address_destin["amount"]
                         quantity = amount
-                        # if amount is not None:
-                        #     quantity = amount.get('quantity')
-                        #     if amount.get('unit') == 'ada':
-                        #         quantity = quantity * 1_000_000
-                        # else:
-                        #     quantity = 0
                         if (
                             address_destin.get("tokens") is not None
                             and address_destin.get("tokens") != []
@@ -890,7 +842,7 @@ class Node(Starter):
                                 amount = asset.get("amount")
                                 policyID = asset.get("policyID")
                                 asset_full_name = policyID + "." + asset_name
-                                if mint is not None: 
+                                if mint is not None:
                                     asset_output_string += (
                                         str(amount) + " " + asset_full_name + "+"
                                     )
@@ -900,7 +852,10 @@ class Node(Starter):
                                             asset_full_name
                                         )
                                         if amount <= asset_balance:
-                                            TxHash_in, amount_equal = self.utxo_selection(
+                                            (
+                                                TxHash_in,
+                                                amount_equal,
+                                            ) = self.utxo_selection(
                                                 addr_origin_tx,
                                                 amount,
                                                 False,
@@ -908,7 +863,10 @@ class Node(Starter):
                                                 minting,
                                             )
                                             asset_output_string += (
-                                                str(amount) + " " + asset_full_name + "+"
+                                                str(amount)
+                                                + " "
+                                                + asset_full_name
+                                                + "+"
                                             )
                                             TxHash_in_asset += TxHash_in
                                         else:
@@ -939,7 +897,6 @@ class Node(Starter):
                                         + str(quantity)
                                         + "+"
                                         + asset_output_string
-                                        # + mint_output_string
                                     )
                                 else:
                                     self.LOGGER.error(
@@ -1000,13 +957,17 @@ class Node(Starter):
                 tx_in = len(TxHash_in) * ["--tx-in"]
                 TxHash_in = list(chain(*zip(tx_in, TxHash_in)))  # Intercalate elements
 
+                if witness is not None:
+                    witness = str(witness)
+                else:
+                    witness = str(1)
                 #########################################################
                 command_string = [
                     self.CARDANO_CLI_PATH,
                     "transaction",
                     "build",
                     "--witness-override",
-                    str(witness),
+                    witness,
                     "--out-file",
                     self.TRANSACTION_PATH_FILE + "/tx.draft",
                 ]
@@ -1020,7 +981,7 @@ class Node(Starter):
                 )
                 i = i + index
                 metadata_array = []
-                if metadata is not None and metadata != {}:
+                if metadata is not None:
                     metadata_json_file = save_metadata(
                         self.TRANSACTION_PATH_FILE, "tx_metadata.json", metadata
                     )
@@ -1058,6 +1019,19 @@ class Node(Starter):
                         3 + i, 1, command_string, script_path_array
                     )
                     i = i + index
+
+                inline_datum_array = []
+                if inline_datum is not None:
+                    inline_datum_json_file = save_metadata(
+                        self.TRANSACTION_PATH_FILE, "tx_inline_datum.json", inline_datum
+                    )
+                    inline_datum_array.append("--tx-out-inline-datum-file")
+                    inline_datum_array.append(inline_datum_json_file)
+                    command_string, index = self.insert_command(
+                        3 + i, 1, command_string, inline_datum_array
+                    )
+                    i = i + index
+
                 if self.CARDANO_NETWORK == "testnet":
                     command_string, index = self.insert_command(
                         3 + i,
@@ -1170,6 +1144,7 @@ class Node(Starter):
             )
 
         return rawResult
+
 
 class Keys(Starter):
     def __init__(self, config_path=CARDANO_CONFIGS):
@@ -1548,7 +1523,7 @@ class Keys(Starter):
         self.execute_command(command_string, None)
         output = self.cat_files(self.path, "/" + name + "/" + name + ".base.addr")
         base_addr = output.communicate()[0].decode("utf-8")
-        
+
         remove_file(self.path, "/temp_payment.vkey")
         remove_file(self.path, "/temp_stake.vkey")
         print("Base address: '%s'" % (base_addr))
