@@ -238,7 +238,7 @@ inline_datum = {
 
 params = {
             "address_origin": address_origin,
-            "address_destin": address_destin_no_tokens,
+            # "address_destin": address_destin_no_tokens,
             "change_address": address_origin,
             # "metadata": metadata,
             # "mint": None,

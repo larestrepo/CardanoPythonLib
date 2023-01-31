@@ -1055,7 +1055,8 @@ class Node(Starter):
                 self.LOGGER.info(command_string)
                 rawResult = self.execute_command(command_string, None)
                 self.LOGGER.info(rawResult)
-
+                if "Estimated transaction fee: Lovelace" not in rawResult:
+                    raise TypeError()
             else:
                 self.LOGGER.error(f"Not utxos found in the address provided")
                 rawResult = None
