@@ -29,7 +29,7 @@ schema = {
             },
             "change_address": {
                 "type": "string",
-                "required": True,
+                "required": False,
             },
             "metadata": {
                 "type": "dict",

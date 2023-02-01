@@ -2,14 +2,14 @@ from cardanopythonlib import base
 
 # starter = base.Starter()
 # print(starter.CARDANO_CLI_PATH)
-# config_path = './cardano_config.ini'
+# config_path = "./cardano_config.ini"
 
 node = base.Node()
 
 print(node.query_tip_exec())
 
 print(node.MINT_FOLDER)
-# node.create_simple_script('MyFirstMultiSig','mint', 'all', 1, ['80b34df2162e9c4a38ce63322a8f903c9455a0bebd64c02cf1f3222a'])
+# node.create_simple_script("MyFirstMultiSig","mint", "all", 1, ["80b34df2162e9c4a38ce63322a8f903c9455a0bebd64c02cf1f3222a"])
 # parameters = {
 #     "name": "Myfinaltest",
 #     "type": "atLeast",
@@ -21,7 +21,7 @@ print(node.MINT_FOLDER)
 # }
 # node.create_simple_script(parameters=parameters)
 # node.create_policy_id("mint", "Myfinaltest")
-# policyid = node.create_policy_id("MyFirstMultiSig", 'mint')
+# policyid = node.create_policy_id("MyFirstMultiSig", "mint")
 # print(policyid)
 # print(node.query_protocol())
 
@@ -31,27 +31,27 @@ print(node.MINT_FOLDER)
 
 # # Option 1
 
-# wallet_name = 'receiving'
+# wallet_name = "receiving"
 # nmemonic_size = 24
 # # keys.generate_mnemonic()
-# words = ['stock', 'pattern', 'fire', 'thought', 'denial', 'divorce', 'rocket', 'destroy', 'dog', 'weekend', 'twin', 'group', 'emerge', 'invest', 'muffin', 'outer', 'dress', 'mom', 'action', 'average', 'arrange', 'proud', 'piano', 'doctor']
+# words = ["stock", "pattern", "fire", "thought", "denial", "divorce", "rocket", "destroy", "dog", "weekend", "twin", "group", "emerge", "invest", "muffin", "outer", "dress", "mom", "action", "average", "arrange", "proud", "piano", "doctor"]
 # keys.deriveAllKeys(wallet_name, words = words)
 
 
 # Building multisig script
 
 # node.KEYS_FILE_PATH
-# wallet_id = 'wallet01'
+# wallet_id = "wallet01"
 # print(node.query_tip_exec())
 # node.get_transactions(wallet_name)
-# print(node.analyze_tx('tx.draft'))
+# print(node.analyze_tx("tx.draft"))
 
 # hash= keys.keyHashing(wallet_id)
-# node.create_multisig_script(wallet_id,'all','',[hash])
+# node.create_multisig_script(wallet_id,"all","",[hash])
 # node.create_policy_id(wallet_id)
 
-# address_origin ='addr_test1vqrfdj8fkzs0pxg0eu4p38apgd430stz5hafx7pnsxn0ccg4jqkyd'
-# address_origin ='addr_test1vp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qcul3azr'
+# address_origin ="addr_test1vqrfdj8fkzs0pxg0eu4p38apgd430stz5hafx7pnsxn0ccg4jqkyd"
+# address_origin ="addr_test1vp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qcul3azr"
 # address_destin = [
 #         {
 #           "address": "addr_test1qr2ac9vl2epy3yjynkqyfuskx6wp6ld70579v3s6wknve3rjkcctzvtrmt0chuqgaphal08kaqhn0gn295v7wefe95eqvl97xq",
@@ -102,7 +102,7 @@ print(node.MINT_FOLDER)
 # witness = 1
 
 # mint = { "policyID": "ae6498eeb6f7f7bdd3b411c7d3bdf0dfd29f6b989382f9bdb1279638",
-#          "policy_path": '.priv/wallets/wallet01/wallet01.script',
+#          "policy_path": ".priv/wallets/wallet01/wallet01.script",
 #          "tokens": [
 #           {"name": "Pruebamil",
 #           "amount": 452215},
@@ -173,7 +173,7 @@ print(node.MINT_FOLDER)
 
 # print(result)
 
-# # sign_address_name = 'wallet01'
+# # sign_address_name = "wallet01"
 # result = node.sign_transaction(wallet_name)
 # result = node.submit_transaction()
 # import ast
@@ -212,44 +212,54 @@ print(node.MINT_FOLDER)
 # result = node.analyze_tx_body()
 # result = node.analyze_tx_signed()
 # result = node.get_txid_body()
-result = node.get_tx_info("9900f38bb17ed9a91111f5de61a9e8a4a540f85b0af4d0804a83ad3ee1fccefa",0)
+result = node.get_tx_info(
+    "9900f38bb17ed9a91111f5de61a9e8a4a540f85b0af4d0804a83ad3ee1fccefa", 0
+)
 print(result)
 
 import json
-with open('./.priv/transactions/tx_info.json', 'r') as file:
-  tx_info = json.load(file)
+
+with open("./.priv/transactions/tx_info.json", "r") as file:
+    tx_info = json.load(file)
 
 print(tx_info)
 
-address_origin = 'addr_test1vpsudqpk00kn4g6qzwm24re8gvtc2lvg2yr4gm52pu89wfqd7n25a'
+address_origin = "addr_test1vpsudqpk00kn4g6qzwm24re8gvtc2lvg2yr4gm52pu89wfqd7n25a"
 # metadata = {"1337": {"name": "hello world", "completed": 0}}
 address_destin_no_tokens = [
-  {
-      "address": "addr_test1vp9pqrswvsfkqd5kmurs7lvlv65jq9l2mefjtnsx3y5uwvcahgzxk",
-      "amount": 3000000,
-      "tokens": [],
-  }]
-inline_datum = {
-    "constructor": 0,
-    "fields": [{
-"int": 42
-    }]
-}
+    {
+        "address": "addr_test1vp9pqrswvsfkqd5kmurs7lvlv65jq9l2mefjtnsx3y5uwvcahgzxk",
+        "amount": 3000000,
+        "tokens": [],
+    }
+]
+inline_datum = {"constructor": 0, "fields": [{"int": 42}]}
 
 params = {
-            "address_origin": address_origin,
-            # "address_destin": address_destin_no_tokens,
-            "change_address": address_origin,
-            # "metadata": metadata,
-            # "mint": None,
-            # "script_path": None,
-            # "witness": 1,
-            "inline_datum": inline_datum,
+    "address_origin": "addr_test1vpsudqpk00kn4g6qzwm24re8gvtc2lvg2yr4gm52pu89wfqd7n25a",
+    "address_destin": [
+        {
+            "address": "addr_test1vp9pqrswvsfkqd5kmurs7lvlv65jq9l2mefjtnsx3y5uwvcahgzxk",
+            "amount": 3000000,
         }
+    ],
+    "inline_datum": {"constructor": 0, "fields": [{"int": 42}]},
+}
+
+# params = {
+#     "address_origin": address_origin,
+#     # "address_destin": address_destin_no_tokens,
+#     "change_address": address_origin,
+#     # "metadata": metadata,
+#     # "mint": None,
+#     # "script_path": None,
+#     # "witness": 1,
+#     "inline_datum": inline_datum,
+# }
 
 result = node.build_tx_components(params)
 print(result)
 
-sign_address_name = 'AylluPayment'
+sign_address_name = "AylluPayment"
 result = node.sign_transaction([sign_address_name])
 result = node.submit_transaction()

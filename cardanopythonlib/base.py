@@ -752,12 +752,11 @@ class Node(Starter):
             assert v.validate(params, schema)  # type: ignore
             # Unpacking the minimum required arguments
             address_origin = params.get("address_origin")
-            change_address = params.get("change_address")
             # Validate address
             address_origin = self.id_to_address(address_origin)
-            change_address = self.id_to_address(change_address)
 
             # Unpacking optional arguments
+            change_address = params.get("change_address")
             address_destin_array = params.get("address_destin", None)
             metadata = params.get("metadata", None)
             mint = params.get("mint", None)
@@ -941,7 +940,10 @@ class Node(Starter):
                             + str(min_utxo_value)
                             + mint_output_string
                         )
-
+                if change_address is not None:
+                    change_address = self.id_to_address(change_address)
+                else:
+                    change_address = address_origin
                 addr_output_array.append("--change-address")
                 addr_output_array.append(change_address)
                 if quantity_array == []:
@@ -1546,22 +1548,27 @@ class Keys(Starter):
         print("Key hash of the verification payment key: '%s'" % (key_hash))
         return key_hash
 
-    def deriveAllKeys(self, name: str, **kwargs) -> dict:
+    def deriveAllKeys(self, name: str, size: Union[int, list[str]]= 24, save_flag: bool=True) -> dict:
         """This function creates all the keys and addresses and save them
         in root_folder/priv/wallet/walletname path
 
 
         Args:
-            size ([int]): [phrase extension: 24, 15, etc]
             name ([str]): [name of the wallet to save the keys]
+            size ([int]): [phrase extension: 24, 15, etc]
+            save_flag ([bool]): [True if saved locally, False to only print results in console]
         """
         if not os.path.exists(self.path + "/" + name):
             os.makedirs(self.path + "/" + name)
-        size = kwargs.get("size")
-        if size == None:
-            nmemonic = kwargs.get("words")
-        else:
+        # size = size
+        if isinstance(size, int):
             nmemonic = self.generate_mnemonic(size)
+        else:
+            nmemonic = size
+        # if size == None:
+        #     nmemonic = kwargs.get("words")
+        # else:
+        #     nmemonic = self.generate_mnemonic(size)
         root_key = self.deriveRootKey(nmemonic)
         stake = self.deriveExtendedSigningStakeKey(root_key)
         payment = self.deriveExtendedSigningPaymentKey(root_key)
@@ -1615,7 +1622,7 @@ class Keys(Starter):
             "base_addr": base_addr,
             "hash_verification_key": hash_verification_key,
         }
-        if kwargs.get("save_flag"):
+        if save_flag:
             with open(self.path + "/" + name + "/" + name + ".json", "w") as file:
                 json.dump(keys, file, indent=4, ensure_ascii=False)
 
