@@ -605,7 +605,7 @@ class PlutusData(ArrayCBORSerializable):
             else:
                 raise TypeError(f"Unexpected data type: {type(obj)}")
 
-        return _dfs(data)
+        return _dfs(data) # type: ignore
 
     @classmethod
     def from_json(cls: Type[PlutusData], data: str) -> PlutusData:
@@ -640,7 +640,7 @@ class RawPlutusData(CBORSerializable):
                 return CBORTag(tag=obj.tag, value=value)
             return obj
 
-        return _dfs(self.data)
+        return _dfs(self.data) # type: ignore
 
     @classmethod
     @limit_primitive_type(CBORTag)

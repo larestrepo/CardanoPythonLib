@@ -246,12 +246,12 @@ class Node(Starter):
             "--out-file",
             self.TRANSACTION_PATH_FILE + "/tx_info.json",
         ]
-        command_string = self.insert_network(command_string, 5,1)
+        command_string = self.insert_network(command_string, 5, 1)
         print(command_string)
         rawResult = self.execute_command(command_string, None)
         return rawResult
 
-    def query_protocol(self, saving_path=""):
+    def query_protocol(self, save_flag: bool=False)-> dict:
         """Execute query protocol parameters.
 
         Args:
@@ -259,11 +259,7 @@ class Node(Starter):
             file. Defaults to ''.
         """
         print("Executing query protocol parameters")
-        if saving_path == "":
-            TRANSACTION_PATH_FILE = self.TRANSACTION_PATH_FILE
-        else:
-            TRANSACTION_PATH_FILE = saving_path
-        protocol_file = TRANSACTION_PATH_FILE + "/protocol.json"
+        protocol_file = self.TRANSACTION_PATH_FILE + "/protocol.json"
         command_string = [self.CARDANO_CLI_PATH, "query", "protocol-parameters"]
         if self.CARDANO_NETWORK == "testnet":
             command_string, index = self.insert_command(
@@ -276,10 +272,10 @@ class Node(Starter):
 
         rawResult = self.execute_command(command_string, None)
         rawResult = json.loads(rawResult)
-
-        with open(protocol_file, "w") as file:
-            json.dump(rawResult, file, indent=4, ensure_ascii=False)
-            self.LOGGER.info(f"Protocol parameters file stored in {protocol_file}")
+        if save_flag:
+            with open(protocol_file, "w") as file:
+                json.dump(rawResult, file, indent=4, ensure_ascii=False)
+                self.LOGGER.info(f"Protocol parameters file stored in {protocol_file}")
         return rawResult
 
     def query_tip_exec(self):
@@ -304,6 +300,52 @@ class Node(Starter):
         rawResult = json.loads(rawResult)
         self.LOGGER.info(rawResult)
         return rawResult
+
+    def min_required_utxo(self, tx_out_address: str, tx_out_tokens: str="", *reference_data)-> int:
+        """_summary_
+
+        :param str tx_out_address: destination address in bech32 format (addr_....)
+        :param str tx_out_tokens: concatenation of tokens to be sent to this address, defaults to ""
+        :param dict **reference_data: with Vasil it is possible to add inline datum or reference scripts
+        most common options for datum:
+        - "--tx-out-datum-hash-file", path to file or
+        - "--tx-out-datum-hash-value", hash datum value or
+        - "--tx-out-inline-datum-file", path to file or
+        - "--tx-out-inline-datum-value", datum value or
+        And for Plutus script:
+        - "--tx-out-reference-script", reference script input file
+        Example:
+        min_required_utxo(tx_out_address, mint_output_string,"--tx-out-inline-datum-value", inline_datum
+        """
+        print("Executing min_required_utxo calculation")
+        min_utxo = 0
+        while True:
+            previous_min_utxo = min_utxo
+            address = f"{tx_out_address}+{str(min_utxo)}{tx_out_tokens}"
+            # if tx_out_tokens !="":
+            # else:
+            #     address = f"{tx_out_address}+{str(0)}"
+            command_string = [
+                self.CARDANO_CLI_PATH,
+                "transaction",
+                "calculate-min-required-utxo",
+                "--tx-out",
+                address,
+                "--protocol-params-file",
+                self.TRANSACTION_PATH_FILE + "/protocol.json"
+            ]
+            if reference_data:
+                command_string, index = self.insert_command(
+                    5, 1, command_string, reference_data
+                )
+            self.LOGGER.info(command_string)
+            min_utxo = self.execute_command(command_string, None)
+            min_utxo = int(min_utxo.split(" ")[1][:-1])
+            if min_utxo == previous_min_utxo: 
+                break
+        self.LOGGER.info(min_utxo)
+        return int(min_utxo)
+
 
     def get_transactions(self, wallet_id):
         """Get the list of transactions from the given addresses.
@@ -763,10 +805,18 @@ class Node(Starter):
             script_path = params.get("script_path", None)
             witness = params.get("witness", None)
             inline_datum = params.get("inline_datum", None)
+            inline_datum_array = []
+            if inline_datum is not None:
+                inline_datum_json_file = save_metadata(
+                    self.TRANSACTION_PATH_FILE, "tx_inline_datum.json", inline_datum
+                )
+                inline_datum_array.append("--tx-out-inline-datum-file")
+                inline_datum_array.append(inline_datum_json_file)
 
-            self.query_protocol()
-            with open(self.TRANSACTION_PATH_FILE + "/protocol.json", "r") as file:
-                utxoCostPerWord = json.load(file).get("utxoCostPerWord")
+            rawResult = self.query_protocol(True)
+            # with open(self.TRANSACTION_PATH_FILE + "/protocol.json", "r") as file:
+            #     utxoCostPerWord = json.load(file).get("utxoCostPerWord")
+            utxoCostPerWord = rawResult.get("utxoCostPerWord")
             if utxoCostPerWord is None:
                 utxoCostPerWord = 34480
             min_utxo_value = 0
@@ -825,7 +875,10 @@ class Node(Starter):
                     for address_destin in address_destin_array:
                         length_assets = 0
                         total_asset_name_len = 0
-                        amount = address_destin["amount"]
+                        tx_out_address = address_destin.get("address")
+                        amount = address_destin.get("amount", None)
+                        if amount is None:
+                            amount = 0
                         quantity = amount
                         if (
                             address_destin.get("tokens") is not None
@@ -879,30 +932,8 @@ class Node(Starter):
                                         )
                                         raise Exception()
                                 asset_output_string = asset_output_string[:-1]
-                                min_utxo_value = self.min_utxo_lovelace(
-                                    length_mint + length_assets,
-                                    total_mint_name_len + total_asset_name_len,
-                                    utxoCostPerWord,
-                                    "",
-                                )
-                                if quantity == 0:
-                                    quantity = min_utxo_value
-                                if quantity >= min_utxo_value:
-                                    quantity_array.append(quantity)
-                                    addr_output_array.append("--tx-out")
-                                    addr_output_array.append(
-                                        address_destin.get("address")
-                                        + "+"
-                                        + str(quantity)
-                                        + "+"
-                                        + asset_output_string
-                                    )
-                                else:
-                                    self.LOGGER.error(
-                                        f"Quantity to send less than min_utxo_value of: {min_utxo_value}"
-                                    )
-                                    raise Exception()
-                        else:
+
+                            
                             min_utxo_value = self.min_utxo_lovelace(
                                 length_mint + length_assets,
                                 total_mint_name_len + total_asset_name_len,
@@ -915,7 +946,30 @@ class Node(Starter):
                                 quantity_array.append(quantity)
                                 addr_output_array.append("--tx-out")
                                 addr_output_array.append(
-                                    address_destin.get("address")
+                                    tx_out_address
+                                    + "+"
+                                    + str(quantity)
+                                    + "+"
+                                    + asset_output_string
+                                )
+                            else:
+                                self.LOGGER.error(
+                                    f"Quantity to send less than min_utxo_value of: {min_utxo_value}"
+                                )
+                                raise Exception()
+                        else:
+                            # Calculate the min ADA in Utxo
+                            if inline_datum is not None:
+                                min_utxo_value = self.min_required_utxo(address_origin, mint_output_string, inline_datum_array[0],inline_datum_array[1])
+                            else:
+                                min_utxo_value = self.min_required_utxo(address_origin, mint_output_string)
+                            if quantity == 0:
+                                quantity = min_utxo_value
+                            if quantity >= min_utxo_value:
+                                quantity_array.append(quantity)
+                                addr_output_array.append("--tx-out")
+                                addr_output_array.append(
+                                    tx_out_address
                                     + "+"
                                     + str(quantity)
                                     + mint_output_string
@@ -926,12 +980,10 @@ class Node(Starter):
                                 )
                                 raise Exception()
                 else:
-                    min_utxo_value = self.min_utxo_lovelace(
-                        length_mint + length_assets,
-                        total_mint_name_len + total_asset_name_len,
-                        utxoCostPerWord,
-                        "",
-                    )
+                    if inline_datum is not None:
+                        min_utxo_value = self.min_required_utxo(address_origin, mint_output_string, inline_datum_array[0],inline_datum_array[1])
+                    else:
+                        min_utxo_value = self.min_required_utxo(address_origin, mint_output_string)
                     if mint is not None:
                         addr_output_array.append("--tx-out")
                         addr_output_array.append(
@@ -1008,6 +1060,7 @@ class Node(Starter):
                             self.LOGGER.error(
                                 f"Not supported type validity in the minting script {type_validity}"
                             )
+                            raise TypeError()
                         command_string, index = self.insert_command(
                             3 + i, 1, command_string, [invalid, slot_validity]
                         )
@@ -1060,19 +1113,21 @@ class Node(Starter):
                 if "Estimated transaction fee: Lovelace" not in rawResult:
                     raise TypeError()
             else:
-                self.LOGGER.error(f"Not utxos found in the address provided")
-                rawResult = None
+                msg = "Not utxos found in the address provided"
+                self.LOGGER.error(msg)
+                rawResult = msg
         except TypeError:
-            self.LOGGER.error(f"Missing required arguments")
-            rawResult = None
+            msg = "Missing required arguments"
+            self.LOGGER.error(msg)
+            rawResult = msg
         except AssertionError:
-            self.LOGGER.error(f"Errors in the message dictionary format. Check {v.errors}")  # type: ignore
-            rawResult = None
+            msg = f"Errors in the message dictionary format. Check {v.errors}"# type: ignore
+            self.LOGGER.error(msg)
+            rawResult = msg
         except Exception:
-            self.LOGGER.error(
-                f"Errors while building the transaction. Probably insufficient ada or native asset funds"
-            )
-            rawResult = None
+            msg= f"Errors while building the transaction. Probably insufficient ada or native asset funds"
+            self.LOGGER.error(msg)
+            rawResult = msg
 
         return rawResult
 
@@ -1156,7 +1211,7 @@ class Keys(Starter):
         self.cardano_network = self.CARDANO_NETWORK
         self.cardano_network_magic = self.CARDANO_NETWORK_MAGIC
 
-    def generate_mnemonic(self, size=24):
+    def generate_mnemonic(self, size: int=24)-> list[str]:
         """Create mnemonic sentence (list of mnemonic words)
         Input: size number of words: 24 by default"""
         print("Executing Generate New Mnemonic Phrase")
@@ -1548,7 +1603,9 @@ class Keys(Starter):
         print("Key hash of the verification payment key: '%s'" % (key_hash))
         return key_hash
 
-    def deriveAllKeys(self, name: str, size: Union[int, list[str]]= 24, save_flag: bool=True) -> dict:
+    def deriveAllKeys(
+        self, name: str, size: Union[int, list[str]] = 24, save_flag: bool = True
+    ) -> dict:
         """This function creates all the keys and addresses and save them
         in root_folder/priv/wallet/walletname path
 

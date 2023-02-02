@@ -15,11 +15,11 @@ class TestLibrary(unittest.TestCase):
         self.config_path = "cardanopythonlib/config/cardano_config.ini"
         self.starter = base.Starter(self.config_path)
         self.node = base.Node(self.config_path)
-        self.address_origin = 'addr_test1vpsudqpk00kn4g6qzwm24re8gvtc2lvg2yr4gm52pu89wfqd7n25a'
+        self.address_origin = 'addr_test1vp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qcul3azr'
         self.metadata = {"1337": {"name": "hello world", "completed": 0}}
         self.address_destin_no_tokens = [
                                 {
-                                    "address": "addr_test1vp9pqrswvsfkqd5kmurs7lvlv65jq9l2mefjtnsx3y5uwvcahgzxk",
+                                    "address": "addr_test1qp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qc0wx9lg9h8x72hctqg34gy2eygnlrf7nyf343w34r67hjskugtxl",
                                     "amount": 3000000,
                                     "tokens": [],
                                 }]
@@ -28,7 +28,8 @@ class TestLibrary(unittest.TestCase):
                             "fields": [{
                                 "int": 42
                             }]
-}
+
+        }
 
     #####################################
     # This is the start of the section to test Starter class and Keys class
@@ -46,7 +47,7 @@ class TestLibrary(unittest.TestCase):
 
     def test_query_protocol_params(self):
         saving_path = "./.priv/transactions"
-        protocol = self.node.query_protocol(saving_path)
+        protocol = self.node.query_protocol(True)
         self.assertNotEqual(
             protocol,
             "",
@@ -147,7 +148,10 @@ class TestLibrary(unittest.TestCase):
             self.assertIn(purpose, script_file_path)
             # keys_file_path = self.starter.KEYS_FILE_PATH + "/" + script_name
             file_exists = os.path.exists(script_file_path)
-            remove_folder(script_file_path + script_name)
+
+            remove_file(script_file_path, "/" + script_name + ".script")
+            remove_file(script_file_path, "/" + script_name + ".policyid")
+
             self.assertEqual(
                 len(policyID.split(" ")), 1, f"Verify the existence of the script file"
             )
@@ -174,13 +178,21 @@ class TestLibrary(unittest.TestCase):
                     # "script_path": None,
                     # "witness": 1,
                 }
-        self.node.build_tx_components(params)
+        response = self.node.build_tx_components(params)
 
         file_exists = os.path.exists(tx_file_path + "/tx.draft")
+
         remove_file(tx_file_path, "/tx.draft")
+        remove_file(tx_file_path, "/tx_metadata")
+
         self.assertTrue(
             file_exists,
             f"Verify the creation of the transaction draft file in {tx_file_path}",
+        )
+        self.assertIn(
+            "Estimated transaction fee: Lovelace",
+            response,
+            "Failed to build the transaction",
         )
 
     def test_build_tx_metadata(self):
@@ -195,12 +207,20 @@ class TestLibrary(unittest.TestCase):
                     # "script_path": None,
                     # "witness": 1,
                 }
-        self.node.build_tx_components(params)
+        response = self.node.build_tx_components(params)
         file_exists = os.path.exists(tx_file_path + "/tx.draft")
+
         remove_file(tx_file_path, "/tx.draft")
+        remove_file(tx_file_path, "/tx_metadata")
+
         self.assertTrue(
             file_exists,
             f"Verify the creation of the transaction draft file in {tx_file_path}",
+        )
+        self.assertIn(
+            "Estimated transaction fee: Lovelace",
+            response,
+            "Failed to build the transaction",
         )
 
     def test_build_tx_destin_no_tokens(self):
@@ -215,12 +235,20 @@ class TestLibrary(unittest.TestCase):
                     # "script_path": None,
                     # "witness": 1,
                 }
-        self.node.build_tx_components(params)
+        response = self.node.build_tx_components(params)
         file_exists = os.path.exists(tx_file_path + "/tx.draft")
+
         remove_file(tx_file_path, "/tx.draft")
+        remove_file(tx_file_path, "/tx_metadata")
+
         self.assertTrue(
             file_exists,
             f"Verify the creation of the transaction draft file in {tx_file_path}",
+        )
+        self.assertIn(
+            "Estimated transaction fee: Lovelace",
+            response,
+            "Failed to build the transaction",
         )
 
     def test_build_tx_inline(self):
@@ -236,13 +264,91 @@ class TestLibrary(unittest.TestCase):
                     # "witness": 1,
                     "inline_datum": self.inline_datum,
                 }
-        self.node.build_tx_components(params)
+        response = self.node.build_tx_components(params)
         file_exists = os.path.exists(tx_file_path + "/tx.draft")
+
+        remove_file(tx_file_path, "/tx.draft")
+        remove_file(tx_file_path, "/tx_metadata")
+        
         self.assertTrue(
             file_exists,
             f"Verify the creation of the transaction draft file in {tx_file_path}",
         )
 
+        self.assertIn(
+            "Estimated transaction fee: Lovelace",
+            response,
+            "Failed to build the transaction",
+        )
+
+    
+    def test_build_tx_mint(self):
+
+        script_name = str(uuid.uuid1())
+        type = "all"
+        required = ""
+        hashes = [
+            "75eacb8808f937e42cde4312d2d4bb42bd1cbfca379bbe90a3ec0383",
+        ]
+        type_time = "before"
+        slot = self.node.query_tip_exec()["slot"] + 20000
+        purpose = "mint"
+        parameters = {
+            "name": script_name,
+            "type": type,
+            "required": required,
+            "hashes": hashes,
+            "type_time": type_time,
+            "slot": slot,
+            "purpose": purpose
+        }
+        multisig_script, policyID = self.node.create_simple_script(parameters=parameters)
+        script_file_path = ""
+        if purpose == "mint":
+            script_file_path = self.starter.MINT_FOLDER
+        elif purpose == "multisig":
+            script_file_path = self.starter.MULTISIG_FOLDER
+
+        mint = { 
+            "policyID": policyID,
+            "policy_path": script_file_path + "/" + script_name + ".script",
+            "validity_interval": {
+                "type": type_time,
+                "slot": slot
+            },
+            "tokens": [
+                {"name": "Random",
+                "amount": 452215},
+            ]
+        }
+        tx_file_path = self.starter.TRANSACTION_PATH_FILE
+        params = {
+                    "address_origin": self.address_origin,
+                    "address_destin": self.address_destin_no_tokens,
+                    "change_address": self.address_origin,
+                    "metadata": self.metadata,
+                    "mint": mint,
+                    # "script_path": None,
+                    # "witness": 1,
+                    # "inline_datum": self.inline_datum,
+                }
+        response = self.node.build_tx_components(params)
+        file_exists = os.path.exists(tx_file_path + "/tx.draft")
+
+        remove_file(script_file_path, "/" + script_name + ".script")
+        remove_file(script_file_path, "/" + script_name + ".policyid")
         remove_file(tx_file_path, "/tx.draft")
+        remove_file(tx_file_path, "/tx_metadata")
+
+        self.assertTrue(
+            file_exists,
+            f"Verify the creation of the transaction draft file in {tx_file_path}",
+        )
+        self.assertIn(
+            "Estimated transaction fee: Lovelace",
+            response,
+            "Failed to build the transaction",
+        )
+
 if __name__ == "__main__":
     unittest.main()

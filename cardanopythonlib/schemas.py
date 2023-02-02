@@ -14,6 +14,7 @@ schema = {
                         "amount": {"type": "integer"},
                         "tokens": {
                             "type": "list",
+                            "required": False,
                             "nullable": True,
                             "schema": {
                                 "type": "dict",

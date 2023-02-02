@@ -60,3 +60,9 @@ base.py file contains 3 classes.
 - Keys
 
 For usage please go to docs folder.
+
+### Credits:
+
+Latest implementations related to Plutus are based on the following repo:
+
+[pycardano](https://github.com/Python-Cardano/pycardano)
