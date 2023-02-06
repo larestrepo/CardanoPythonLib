@@ -6,6 +6,10 @@ from cardanopythonlib import base
 
 node = base.Node()
 
+print(node.get_txid_body())
+
+print(node.get_tx_info("746975a3a70a1e9832d5b46e46902a436dac24bf48c5d7e0507feeea7e4bea80"))
+
 print(node.query_tip_exec())
 
 print(node.MINT_FOLDER)

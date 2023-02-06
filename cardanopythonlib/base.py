@@ -12,7 +12,7 @@ import sys
 from base64 import b16encode
 from itertools import chain, groupby
 from operator import itemgetter
-from typing import Tuple, Union, List
+from typing import Tuple, Union, List, Literal
 
 from cerberus import Validator
 
@@ -188,7 +188,7 @@ class Node(Starter):
     def __init__(self, config_path=CARDANO_CONFIGS):
         super().__init__(config_path)
 
-    def id_to_address(self, wallet_name):
+    def id_to_address(self, wallet_name: str) -> str:
         """Get payment address stored locally from wallet_name; if address is
         provided, address is returned
 
@@ -219,6 +219,13 @@ class Node(Starter):
 
     def get_txid_body(self) -> str:
 
+        """ Get the transaction hash from the tx.draft file
+        No need of paramaters as it assumes that the tx.draft is located at
+        .priv/transactions
+
+        :return str: TxOutRefId#TxOutRefIdx
+        """
+
         print("Executing get transaction ID from Tx.draft file")
         command_string = [
             self.CARDANO_CLI_PATH,
@@ -247,11 +254,10 @@ class Node(Starter):
             self.TRANSACTION_PATH_FILE + "/tx_info.json",
         ]
         command_string = self.insert_network(command_string, 5, 1)
-        print(command_string)
         rawResult = self.execute_command(command_string, None)
         return rawResult
 
-    def query_protocol(self, save_flag: bool=False)-> dict:
+    def query_protocol(self, save_flag: bool = False) -> dict:
         """Execute query protocol parameters.
 
         Args:
@@ -301,7 +307,9 @@ class Node(Starter):
         self.LOGGER.info(rawResult)
         return rawResult
 
-    def min_required_utxo(self, tx_out_address: str, tx_out_tokens: str="", *reference_data)-> int:
+    def min_required_utxo(
+        self, tx_out_address: str, tx_out_tokens: str = "", *reference_data
+    ) -> int:
         """_summary_
 
         :param str tx_out_address: destination address in bech32 format (addr_....)
@@ -332,7 +340,7 @@ class Node(Starter):
                 "--tx-out",
                 address,
                 "--protocol-params-file",
-                self.TRANSACTION_PATH_FILE + "/protocol.json"
+                self.TRANSACTION_PATH_FILE + "/protocol.json",
             ]
             if reference_data:
                 command_string, index = self.insert_command(
@@ -341,13 +349,12 @@ class Node(Starter):
             self.LOGGER.info(command_string)
             min_utxo = self.execute_command(command_string, None)
             min_utxo = int(min_utxo.split(" ")[1][:-1])
-            if min_utxo == previous_min_utxo: 
+            if min_utxo == previous_min_utxo:
                 break
         self.LOGGER.info(min_utxo)
         return int(min_utxo)
 
-
-    def get_transactions(self, wallet_id):
+    def get_transactions(self, wallet_id: str) -> list[dict]:
         """Get the list of transactions from the given addresses.
         Args: Cardano Blockchain address or wallet id to search for UTXOs
         Returns:
@@ -394,7 +401,7 @@ class Node(Starter):
         self.LOGGER.debug(token_transactions)
         return token_transactions
 
-    def get_balance(self, wallet_id):
+    def get_balance(self, wallet_id: str) -> dict:
         """Get the balance in dictionary format at the specified wallet
             address or from address base if wallet id is provided
 
@@ -440,7 +447,15 @@ class Node(Starter):
             self.LOGGER.info(f"{k} is : {v}")
         return balance_dict
 
-    def utxo_selection(self, addr_origin_tx, quantity, deplete, coin_name, minting):
+    def utxo_selection(
+        self,
+        addr_origin_tx: list[dict],
+        # coins: dict = {"lovelace": 2000000},
+        quantity: int= 2000000,
+        deplete: bool = False,
+        action: Literal["burn", "mint", "send"]= "send",
+        coin_name: str = "lovelace",
+    ) -> Tuple[list, int]:
         """Function based on the coin selection algorithm to properly handle
         the use of utxos in the wallet.
         Rules are:
@@ -475,39 +490,46 @@ class Node(Starter):
         utxo_found = False
         amount_equal = 0
         if addr_origin_tx:
-            for utxo in addr_origin_tx:
-                if minting and len(utxo.get("amounts")) > 1:
-                    continue
+            filtered_utxos = []
+            utxo_only_lovelace = list(filter(lambda utxo: len(utxo["amounts"]) == 1, addr_origin_tx))
+            utxo_with_tokens = list(filter(lambda utxo: len(utxo["amounts"]) != 1, addr_origin_tx))
+            if (action == "burn") or (action == "send" and coin_name != "lovelace"):
+                filtered_utxos = utxo_with_tokens
+            if action == "mint" or (action == "send" and coin_name == "lovelace"):
+                filtered_utxos = utxo_only_lovelace
+            for utxo in filtered_utxos:
+                for amount in utxo["amounts"]:
+                    if amount.get("token") == coin_name:
+                        if deplete:
+                            # TxHash.append('--tx-in')
+                            TxHash.append(utxo["hash"] + "#" + utxo.get("id"))
+                            amount_equal += int(amount.get("amount"))
+                            utxo_found = True
+                            break
+                        if int(amount.get("amount")) == quantity + minCost:
+                            # TxHash.append('--tx-in')
+                            TxHash.append(utxo["hash"] + "#" + utxo.get("id"))
+                            amount_equal =sum([int(amount["amount"]) for amount in utxo["amounts"] if amount["token"] == "lovelace"])
+                            # amount_equal = int(amount.get("amount"))
+                            utxo_found = True
+                            break
+                        elif int(amount.get("amount")) < quantity + minCost:
+                            TxHash_lower.append(utxo["hash"] + "#" + utxo.get("id"))
+                            amount_lower.append(int(amount.get("amount")))
+                        elif int(amount.get("amount")) > quantity + minCost:
+                            TxHash_greater.append(
+                                utxo["hash"] + "#" + utxo.get("id")
+                            )
+                            amount_greater.append(int(amount.get("amount")))
                 else:
-                    for amount in utxo.get("amounts"):
-                        if amount.get("token") == coin_name:
-                            if deplete:
-                                # TxHash.append('--tx-in')
-                                TxHash.append(utxo.get("hash") + "#" + utxo.get("id"))
-                                amount_equal += int(amount.get("amount"))
-                                utxo_found = True
-                                break
-                            if int(amount.get("amount")) == quantity + minCost:
-                                # TxHash.append('--tx-in')
-                                TxHash.append(utxo.get("hash") + "#" + utxo.get("id"))
-                                amount_equal = int(amount.get("amount"))
-                                utxo_found = True
-                                break
-                            elif int(amount.get("amount")) < quantity + minCost:
-                                TxHash_lower.append(
-                                    utxo.get("hash") + "#" + utxo.get("id")
-                                )
-                                amount_lower.append(int(amount.get("amount")))
-                            elif int(amount.get("amount")) > quantity + minCost:
-                                TxHash_greater.append(
-                                    utxo.get("hash") + "#" + utxo.get("id")
-                                )
-                                amount_greater.append(int(amount.get("amount")))
+                    continue
+                break
 
-            if not utxo_found:
+            if not utxo_found: # If more than 1 utxo 
                 if sum(amount_lower) == quantity + minCost:
                     # TxHash.append('--tx-in')
-                    TxHash.append(TxHash_lower)
+                    # TxHash.append(TxHash_lower)
+                    TxHash = TxHash_lower
                     amount_equal = sum(amount_lower)
                 elif sum(amount_lower) < quantity + minCost:
                     if amount_greater == []:
@@ -518,25 +540,32 @@ class Node(Starter):
                         i for i, j in enumerate(amount_greater) if j == amount_equal
                     ][0]
                     TxHash.append(TxHash_greater[index])
+                elif sum(amount_lower) > quantity +  minCost and TxHash_greater == []:
+                    accumulate = 0
+                    # Creating descending tuple list (utxo, q) to fill te amount required
+                    combined = sorted(list(zip(TxHash_lower, amount_lower)), key=lambda utxo: utxo[1], reverse=True)
+                    for i, (utxo, q) in enumerate(combined):
+                        amount_equal += q
+                        TxHash.append(utxo)
+                        if amount_equal >= quantity + minCost:
+                            break
                 else:
                     utxo_array = []
                     amount_array = []
                     for _ in range(999):
                         index_random = random.randint(0, len(addr_origin_tx) - 1)
                         utxo = addr_origin_tx.pop(index_random)
-                        utxo_array.append(utxo.get("hash") + "#" + utxo.get("id"))
-                        for amount in utxo.get("amounts"):
+                        utxo_array.append(utxo["hash"] + "#" + utxo.get("id"))
+                        for amount in utxo["amounts"]:
                             if amount.get("token") == coin_name:
                                 amount_array.append(int(amount.get("amount")))
                         if sum(amount_array) >= quantity + minCost:
                             amount_equal = sum(amount_array)
                             break
                     TxHash = utxo_array
-            self.LOGGER.debug(f"{TxHash}, {amount_equal}")
-            return TxHash, amount_equal
-        else:
-            self.LOGGER.debug(f"{{}}, {0}")
-            return {}, 0
+            
+        self.LOGGER.debug(f"{TxHash}, {amount_equal}")
+        return TxHash, amount_equal
 
     def tx_min_fee(
         self, tx_in_count, tx_out_count
@@ -616,19 +645,29 @@ class Node(Starter):
         return rawResult
 
     def create_simple_script(
-        self, **kwargs: dict
+        self, params: dict
     ) -> Tuple[Union[dict, None], Union[str, None]]:
         print("Executing Creation of script")
-        parameters = kwargs["parameters"]
+        from schemas import create_simple_script_schema as schema
+
+        v = Validator()
 
         try:
-            script_name = parameters["name"]
-            type = parameters["type"]
-            required = parameters.get("required", None)
-            hashes = parameters["hashes"]
-            type_time = parameters.get("type_time", None)
-            slot = parameters.get("slot", None)
-            purpose = parameters["purpose"]
+            assert v.validate(params, schema)  # type: ignore
+            # Unpacking required params
+            script_name = params["name"]
+            hashes = params["hashes"]
+            purpose = params["purpose"]
+            type = params["type"]
+
+            # Unpacking optional params
+            required = params.get("required", None)
+            type_time = params.get("type_time", None)
+            slot = params.get("slot", None)
+
+            # Assertions
+            if type == "atLeast":
+                assert isinstance(required, int)
 
             script_array = []
             simple_script = None
@@ -636,34 +675,26 @@ class Node(Starter):
             for hash in hashes:
                 script = {"type": "sig", "keyHash": str(hash)}
                 script_array.append(script)
-            if isinstance(type_time, str) and isinstance(slot, int):
+
+            if type_time is not None and slot is not None:
                 script_array.append({"type": type_time, "slot": slot})
             simple_script = {"type": str(type), "scripts": script_array}
-            if type != "all" and "any":
-                if isinstance(required, int):
-                    simple_script["required"] = required
-                else:
-                    self.LOGGER.error(
-                        "Type different than all or any must have required field specified"
-                    )
-                    return None, None
 
+            script_file_path = ""
             if purpose == "mint":
                 script_file_path = self.MINT_FOLDER
             elif purpose == "multisig":
                 script_file_path = self.MULTISIG_FOLDER
-            else:
-                script_file_path = None
 
-            if script_file_path is not None:
-                save_metadata(script_file_path, script_name + ".script", simple_script)
-                policyID = self.create_policy_id(purpose, script_name)
-                self.LOGGER.info(
-                    f"Script stored in {script_file_path}, {simple_script}"
-                )
-            else:
-                self.LOGGER.info(f"Check the purpose provided")
+            save_metadata(script_file_path, script_name + ".script", simple_script)
+            policyID = self.create_policy_id(purpose, script_name)
+            self.LOGGER.info(f"Script stored in {script_file_path}, {simple_script}")
 
+        except AssertionError:
+            msg = f"Errors in the parameters. Check {v.errors}"  # type: ignore
+            self.LOGGER.error(msg)
+            simple_script = None
+            policyID = None
         except Exception:
             self.LOGGER.error(f"Problems creating the script or policyID")
             simple_script = None
@@ -783,17 +814,17 @@ class Node(Starter):
         self.LOGGER.info(rawResult)
         return rawResult
 
-    def build_tx_components(self, params):
+    def build_tx_components(self, params: dict) -> str:
 
         print("Building the transaction")
         # Import schema for validation
-        from schemas import schema
+        from schemas import build_tx_components_schema as schema
 
         v = Validator()
         try:
             assert v.validate(params, schema)  # type: ignore
             # Unpacking the minimum required arguments
-            address_origin = params.get("address_origin")
+            address_origin = str(params.get("address_origin"))
             # Validate address
             address_origin = self.id_to_address(address_origin)
 
@@ -833,9 +864,10 @@ class Node(Starter):
                 length_mint = 0
                 slot_validity = None
                 type_validity = None
-                minting = False
+                mint_quantity = 0
+                action = None
+                mint_name = ""
                 if mint is not None:
-                    minting = True
                     length_mint = len(mint.get("tokens"))
                     policyid = mint.get("policyID")
                     policy_path = mint.get("policy_path")
@@ -844,25 +876,20 @@ class Node(Starter):
                     if validity_interval is not None:
                         slot_validity = validity_interval.get("slot", None)
                         type_validity = validity_interval.get("type", None)
-                    for token in mint.get("tokens"):
+                    for token in mint["tokens"]:
+                        action = token["action"]
                         mint_name = token.get("name").encode("utf-8")
-                        mint_name = b16encode(mint_name).decode("utf-8")
-                        mint_quantity = token.get("amount")
+                        mint_name = b16encode(mint_name).decode("utf-8").lower()
+                        mint_name = str(policyid + "." + mint_name)
+                        mint_quantity = token.get("amount") if action == "mint"  else (-1)*token.get("amount")
                         mint_quantity_array.append(mint_quantity)
                         total_mint_name_len += len(mint_name)
-                        mint_output_string += (
-                            str(mint_quantity)
-                            + " "
-                            + str(policyid)
-                            + "."
-                            + str(mint_name)
-                            + "+"
-                        )
+                        mint_output_string += (str(mint_quantity) + " "+ mint_name+ "+")
 
                     mint_output_string = mint_output_string[:-1]
                     mint_string = "--mint="
                     mint_string = mint_string + mint_output_string
-                    mint_output_string = "+" + mint_output_string
+                    mint_output_string = "" if action == "burn" else "+" + mint_output_string
                     mint_array.append(mint_string)
                     mint_array.append("--mint-script-file")
                     mint_array.append(policy_path)
@@ -908,11 +935,7 @@ class Node(Starter):
                                                 TxHash_in,
                                                 amount_equal,
                                             ) = self.utxo_selection(
-                                                addr_origin_tx,
-                                                amount,
-                                                False,
-                                                asset_full_name,
-                                                minting,
+                                                addr_origin_tx, amount
                                             )
                                             asset_output_string += (
                                                 str(amount)
@@ -933,7 +956,6 @@ class Node(Starter):
                                         raise Exception()
                                 asset_output_string = asset_output_string[:-1]
 
-                            
                             min_utxo_value = self.min_utxo_lovelace(
                                 length_mint + length_assets,
                                 total_mint_name_len + total_asset_name_len,
@@ -960,9 +982,16 @@ class Node(Starter):
                         else:
                             # Calculate the min ADA in Utxo
                             if inline_datum is not None:
-                                min_utxo_value = self.min_required_utxo(address_origin, mint_output_string, inline_datum_array[0],inline_datum_array[1])
+                                min_utxo_value = self.min_required_utxo(
+                                    address_origin,
+                                    mint_output_string,
+                                    inline_datum_array[0],
+                                    inline_datum_array[1],
+                                )
                             else:
-                                min_utxo_value = self.min_required_utxo(address_origin, mint_output_string)
+                                min_utxo_value = self.min_required_utxo(
+                                    address_origin, mint_output_string
+                                )
                             if quantity == 0:
                                 quantity = min_utxo_value
                             if quantity >= min_utxo_value:
@@ -981,9 +1010,16 @@ class Node(Starter):
                                 raise Exception()
                 else:
                     if inline_datum is not None:
-                        min_utxo_value = self.min_required_utxo(address_origin, mint_output_string, inline_datum_array[0],inline_datum_array[1])
+                        min_utxo_value = self.min_required_utxo(
+                            address_origin,
+                            mint_output_string,
+                            inline_datum_array[0],
+                            inline_datum_array[1],
+                        )
                     else:
-                        min_utxo_value = self.min_required_utxo(address_origin, mint_output_string)
+                        min_utxo_value = self.min_required_utxo(
+                            address_origin, mint_output_string
+                        )
                     if mint is not None:
                         addr_output_array.append("--tx-out")
                         addr_output_array.append(
@@ -998,13 +1034,17 @@ class Node(Starter):
                     change_address = address_origin
                 addr_output_array.append("--change-address")
                 addr_output_array.append(change_address)
-                if quantity_array == []:
-                    quantity_array = [min_utxo_value]
-                target_calculated = sum(quantity_array)
-                deplete = False
+                if quantity_array == [] and action == "mint":
+                    target_calculated = min_utxo_value
+                else: 
+                    target_calculated = sum(quantity_array)
+                coin_name = "lovelace"
+                if action == "burn": 
+                    coin_name = mint_name
+                    target_calculated = abs(mint_quantity)
                 TxHash_in, amount_equal = self.utxo_selection(
-                    addr_origin_tx, target_calculated, deplete, "lovelace", minting
-                )
+                    addr_origin_tx, target_calculated, coin_name=coin_name, action=action # type: ignore
+                 )
                 if TxHash_in_asset != [] and TxHash_in != []:
                     TxHash_in = TxHash_in + TxHash_in_asset  # type: ignore
                     TxHash_in = list(set(TxHash_in))  # remove utxo duplicates
@@ -1121,13 +1161,13 @@ class Node(Starter):
             self.LOGGER.error(msg)
             rawResult = msg
         except AssertionError:
-            msg = f"Errors in the message dictionary format. Check {v.errors}"# type: ignore
+            msg = f"Errors in the message dictionary format. Check {v.errors}"  # type: ignore
             self.LOGGER.error(msg)
             rawResult = msg
-        except Exception:
-            msg= f"Errors while building the transaction. Probably insufficient ada or native asset funds"
-            self.LOGGER.error(msg)
-            rawResult = msg
+        # except Exception:
+        #     msg = f"Errors while building the transaction. Probably insufficient ada or native asset funds"
+        #     self.LOGGER.error(msg)
+        #     rawResult = msg
 
         return rawResult
 
@@ -1211,7 +1251,7 @@ class Keys(Starter):
         self.cardano_network = self.CARDANO_NETWORK
         self.cardano_network_magic = self.CARDANO_NETWORK_MAGIC
 
-    def generate_mnemonic(self, size: int=24)-> list[str]:
+    def generate_mnemonic(self, size: int = 24) -> list[str]:
         """Create mnemonic sentence (list of mnemonic words)
         Input: size number of words: 24 by default"""
         print("Executing Generate New Mnemonic Phrase")
