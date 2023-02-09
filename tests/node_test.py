@@ -68,6 +68,14 @@ class TestLibrary(unittest.TestCase):
             f"problems generating the protocol params file from query_protocol function",
         )
 
+    def test_min_required_utxo(self):
+
+        address = "addr_test1vrpns5yma4fy2dllhkzpyeur8xes94d903xu7enwuhc4erqecraxf"
+        value = self.node.min_required_utxo(address)
+        print(value)
+        self.assertIs(type(value), int, "Return value is not integer")
+       
+
     def test_get_transactions(self):
         transactions = self.node.get_transactions(self.address_origin)
         self.assertIs(type(transactions), list, "Confirm if the address has utxos")
@@ -185,7 +193,6 @@ class TestLibrary(unittest.TestCase):
             )
 
     def test_create_multisig_script(self):
-        script_name = str(uuid.uuid1())
         type = "all"
         required = ""
         hashes = [
@@ -193,15 +200,14 @@ class TestLibrary(unittest.TestCase):
             "955df18bcefaf6f7b956c2299633a75dfd3153451a56bd9676fd58a7",
             "0696c8e9b0a0f0990fcf2a189fa1436b17c162a5fa93783381a6fc61",
         ]
-        type_time = "before"
+        # type_time = "before"
         slot = self.node.query_tip_exec()["slot"] + 20000
         purpose = "mint"
         parameters = {
-            "name": script_name,
             "type": type,
             "required": required,
             "hashes": hashes,
-            "type_time": type_time,
+            "type_time": self.type_time,
             "slot": slot,
             "purpose": purpose,
         }
@@ -236,8 +242,8 @@ class TestLibrary(unittest.TestCase):
             # keys_file_path = self.starter.KEYS_FILE_PATH + "/" + script_name
             file_exists = os.path.exists(script_file_path)
 
-            remove_file(script_file_path, "/" + script_name + ".script")
-            remove_file(script_file_path, "/" + script_name + ".policyid")
+            remove_file(script_file_path, "/" + policyID + ".script")
+            remove_file(script_file_path, "/" + policyID + ".policyid")
 
             self.assertEqual(
                 len(policyID.split(" ")), 1, f"Verify the existence of the script file"
@@ -255,14 +261,13 @@ class TestLibrary(unittest.TestCase):
     def test_create_simple_script(self):
         type = "all"
         hashes = ["f8bd3d31f018921f7dd73d21fd7a2f5767483d3f4c960c88d16e807f"]
-        type_time = "before"
+        # type_time = "before"
         slot = self.node.query_tip_exec()["slot"] + 20000
         parameters = {
-            "name": self.script_name,
             "type": type,
             "hashes": hashes,
             "purpose": self.purpose,
-            "type_time": type_time,
+            "type_time": self.type_time,
             "slot": slot,
         }
         multisig_script, policyID = self.node.create_simple_script(parameters)
@@ -273,8 +278,8 @@ class TestLibrary(unittest.TestCase):
             script_file_path = self.starter.MINT_FOLDER
             file_exists = os.path.exists(script_file_path)
 
-            remove_file(script_file_path, "/" + self.script_name + ".script")
-            remove_file(script_file_path, "/" + self.script_name + ".policyid")
+            remove_file(script_file_path, "/" + policyID + ".script")
+            remove_file(script_file_path, "/" + policyID + ".policyid")
 
             self.assertEqual(
                 multisig_script["type"], type, "Review the type of the multisig script"
@@ -423,10 +428,12 @@ class TestLibrary(unittest.TestCase):
 
         type = "all"
         hashes = ["75eacb8808f937e42cde4312d2d4bb42bd1cbfca379bbe90a3ec0383"]
+        slot = self.node.query_tip_exec()["slot"] + 20000
         parameters = {
-            "name": self.script_name,
             "type": type,
             "hashes": hashes,
+            "type_time": self.type_time,
+            "slot": slot,
             "purpose": self.purpose,
         }
         multisig_script, policyID = self.node.create_simple_script(parameters)
@@ -434,7 +441,6 @@ class TestLibrary(unittest.TestCase):
 
         mint = {
             "policyID": policyID,
-            "policy_path": script_file_path + "/" + self.script_name + ".script",
             "tokens": [
                 {"name": "Random", "amount": 321, "action": "mint"},
             ],
@@ -467,12 +473,13 @@ class TestLibrary(unittest.TestCase):
     def test_just_burn(self):
         type = "all"
         hashes = ["75eacb8808f937e42cde4312d2d4bb42bd1cbfca379bbe90a3ec0383"]
-        # slot = self.node.query_tip_exec()["slot"] + 20000
+        # hashes = ["c338509bed524537ffbd8412678339b302d5a57c4dcf666ee5f15c8c"]
+        slot = self.node.query_tip_exec()["slot"] + 20000
         parameters = {
             "name": self.script_name,
             "type": type,
             "hashes": hashes,
-            # "type_time": type_time,
+            # "type_time": self.type_time,
             # "slot": slot,
             "purpose": self.purpose,
         }
@@ -488,11 +495,12 @@ class TestLibrary(unittest.TestCase):
             "policy_path": script_file_path + "/" + self.script_name + ".script",
             # "validity_interval": {"type": type_time, "slot": slot},
             "tokens": [
-                {"name": "Random", "amount": 452215, "action": "burn"},
+                {"name": "MyTestEMG", "amount": 1, "action": "burn"},
             ],
         }
         params = {
-            "address_origin": "addr_test1qp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qc0wx9lg9h8x72hctqg34gy2eygnlrf7nyf343w34r67hjskugtxl",
+            "address_origin": "addr_test1vp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qcul3azr",
+            # "address_origin": "addr_test1vrpns5yma4fy2dllhkzpyeur8xes94d903xu7enwuhc4erqecraxf",
             "mint": mint,
         }
         response = self.node.build_tx_components(params)
@@ -537,7 +545,7 @@ class TestLibraryOnline(unittest.TestCase):
         self.policyID = "cc8df048ecf8d32149269767c961aa193d89208844e876bdef186c9f"
         self.script_file_path = "./priv/example/example.script"
         self.type_time = "before"
-        self.slot = 39874005
+        self.slot = self.node.query_tip_exec()["slot"] + 90000
         self.purpose = "mint"
 
     #####################################
@@ -549,9 +557,10 @@ class TestLibraryOnline(unittest.TestCase):
         type = "all"
         hashes = ["75eacb8808f937e42cde4312d2d4bb42bd1cbfca379bbe90a3ec0383"]
         parameters = {
-            "name": self.script_name,
             "type": type,
             "hashes": hashes,
+            "type_time": self.type_time,
+            "slot": self.slot,
             "purpose": self.purpose,
         }
         multisig_script, policyID = self.node.create_simple_script(parameters)
@@ -559,7 +568,6 @@ class TestLibraryOnline(unittest.TestCase):
 
         mint = {
             "policyID": policyID,
-            "policy_path": script_file_path + "/" + self.script_name + ".script",
             "tokens": [
                 {"name": "Random", "amount": 321, "action": "mint"},
             ],
@@ -593,8 +601,13 @@ class TestLibraryOnline(unittest.TestCase):
             f"Verify the creation of the transaction sign file in {tx_file_path}",
         )
 
-        response = self.node.submit_transaction()
+        self.assertIn(
+            "Transaction signed!!",
+            response,
+            "Failed to sign the transaction"
+        )
 
+        response = self.node.submit_transaction()
 
         # Loop to confirm the transaction
 
@@ -616,8 +629,6 @@ class TestLibraryOnline(unittest.TestCase):
 
         mint = {
             "policyID": policyID,
-            "policy_path": script_file_path + "/" + self.script_name + ".script",
-            # "validity_interval": {"type": type_time, "slot": slot},
             "tokens": [
                 {"name": "Random", "amount": 321, "action": "burn"},
             ],

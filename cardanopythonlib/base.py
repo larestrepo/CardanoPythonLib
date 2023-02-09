@@ -13,6 +13,7 @@ from base64 import b16encode
 from itertools import chain, groupby
 from operator import itemgetter
 from typing import Tuple, Union, List, Literal
+import uuid
 
 from cerberus import Validator
 
@@ -450,10 +451,10 @@ class Node(Starter):
     def utxo_selection(
         self,
         addr_origin_tx: list[dict],
-        # coins: dict = {"lovelace": 2000000},
         quantity: int= 2000000,
+        min_utxo: int= 500000,
         deplete: bool = False,
-        action: Literal["burn", "mint", "send"]= "send",
+        action: Literal["burn", "mint", "send"]="send",
         coin_name: str = "lovelace",
     ) -> Tuple[list, int]:
         """Function based on the coin selection algorithm to properly handle
@@ -478,26 +479,12 @@ class Node(Starter):
         Returns:
             _type_: list of utxos to build the transaction
         """
-        # Applying the coin selection algorithm
-        minCost = 0
-        if coin_name == "lovelace":
-            minCost = 1000000
-        TxHash = []
-        TxHash_lower = []
-        amount_lower = []
-        TxHash_greater = []
-        amount_greater = []
-        utxo_found = False
-        amount_equal = 0
-        if addr_origin_tx:
-            filtered_utxos = []
-            utxo_only_lovelace = list(filter(lambda utxo: len(utxo["amounts"]) == 1, addr_origin_tx))
-            utxo_with_tokens = list(filter(lambda utxo: len(utxo["amounts"]) != 1, addr_origin_tx))
-            if (action == "burn") or (action == "send" and coin_name != "lovelace"):
-                filtered_utxos = utxo_with_tokens
-            if action == "mint" or (action == "send" and coin_name == "lovelace"):
-                filtered_utxos = utxo_only_lovelace
-            for utxo in filtered_utxos:
+
+
+        def selection(utxo_list: list, quantity: int, coin_name: str) -> Tuple[list[str], int, bool]:
+            amount_equal = 0
+            utxo_found = False
+            for utxo in utxo_list:
                 for amount in utxo["amounts"]:
                     if amount.get("token") == coin_name:
                         if deplete:
@@ -524,6 +511,65 @@ class Node(Starter):
                 else:
                     continue
                 break
+            return TxHash, amount_equal, utxo_found
+
+        # Applying the coin selection algorithm
+        minCost = 0
+        if coin_name == "lovelace":
+            minCost = 1000000
+        TxHash = []
+        TxHash_lower = []
+        amount_lower = []
+        TxHash_greater = []
+        amount_greater = []
+        amount_equal = 0
+        utxo_found = False
+        if addr_origin_tx:
+            filtered_utxos = []
+            utxo_only_lovelace = list(filter(lambda utxo: len(utxo["amounts"]) == 1, addr_origin_tx))
+            utxo_with_tokens = list(filter(lambda utxo: len(utxo["amounts"]) != 1, addr_origin_tx))
+            if (action == "burn") or (action == "send" and coin_name != "lovelace"):
+                # filtered_utxos = utxo_with_tokens
+                TxHash, amount_equal, utxo_found = selection(utxo_with_tokens, quantity, coin_name=coin_name)
+                if utxo_found and ((amount_equal - min_utxo) < 500000):
+                    quantity = min_utxo
+                    coin_name = "lovelace"
+                    TxHash, amount_equal, utxo_found = selection(utxo_only_lovelace, quantity, coin_name=coin_name)
+
+            if action == "mint" or (action == "send" and coin_name == "lovelace"):
+                # filtered_utxos = utxo_only_lovelace
+                TxHash, amount_equal, utxo_found = selection(utxo_only_lovelace, quantity, coin_name=coin_name)
+            
+            # TxHash, amount_equal, utxo_found = selection(filtered_utxos)
+            
+
+            # for utxo in filtered_utxos:
+            #     for amount in utxo["amounts"]:
+            #         if amount.get("token") == coin_name:
+            #             if deplete:
+            #                 # TxHash.append('--tx-in')
+            #                 TxHash.append(utxo["hash"] + "#" + utxo.get("id"))
+            #                 amount_equal += int(amount.get("amount"))
+            #                 utxo_found = True
+            #                 break
+            #             if int(amount.get("amount")) == quantity + minCost:
+            #                 # TxHash.append('--tx-in')
+            #                 TxHash.append(utxo["hash"] + "#" + utxo.get("id"))
+            #                 amount_equal =sum([int(amount["amount"]) for amount in utxo["amounts"] if amount["token"] == "lovelace"])
+            #                 # amount_equal = int(amount.get("amount"))
+            #                 utxo_found = True
+            #                 break
+            #             elif int(amount.get("amount")) < quantity + minCost:
+            #                 TxHash_lower.append(utxo["hash"] + "#" + utxo.get("id"))
+            #                 amount_lower.append(int(amount.get("amount")))
+            #             elif int(amount.get("amount")) > quantity + minCost:
+            #                 TxHash_greater.append(
+            #                     utxo["hash"] + "#" + utxo.get("id")
+            #                 )
+            #                 amount_greater.append(int(amount.get("amount")))
+            #     else:
+            #         continue
+            #     break
 
             if not utxo_found: # If more than 1 utxo 
                 if sum(amount_lower) == quantity + minCost:
@@ -655,7 +701,7 @@ class Node(Starter):
         try:
             assert v.validate(params, schema)  # type: ignore
             # Unpacking required params
-            script_name = params["name"]
+            script_name = str(uuid.uuid1())
             hashes = params["hashes"]
             purpose = params["purpose"]
             type = params["type"]
@@ -688,6 +734,9 @@ class Node(Starter):
 
             save_metadata(script_file_path, script_name + ".script", simple_script)
             policyID = self.create_policy_id(purpose, script_name)
+            old_name = script_file_path + '/' + script_name + ".script"
+            new_name = script_file_path + '/' + str(policyID) + ".script"
+            os.rename(old_name, new_name)
             self.LOGGER.info(f"Script stored in {script_file_path}, {simple_script}")
 
         except AssertionError:
@@ -730,14 +779,14 @@ class Node(Starter):
             ]
             rawResult = self.execute_command(command_string, None)
             policyID = str(rawResult).rstrip()
-            save_file(script_file_path + "/", script_name + ".policyid", str(policyID))
+            save_file(script_file_path + "/", policyID + ".policyid", str(policyID))
         else:
             policyID = None
 
         self.LOGGER.info(f"PolicyID is: {policyID}")
         return policyID
 
-    def sign_transaction(self, keys_name: List[str]) -> Union[str, None]:
+    def sign_transaction(self, keys_name: List[str]) -> str:
         """Sign the transaction based on tx_raw file.
          *args: represents the number of declared witness keys required to sign the transaction
         Example: sign_transaction(wallet1, wallet2). Two witnesses, transaction will be signed by wallet1 and wallet2.
@@ -785,10 +834,10 @@ class Node(Starter):
             )
             rawResult = "Transaction signed!!"
         else:
+            rawResult = f"Error executing command sign: {rawResult} {command_string}"
             self.LOGGER.error(
-                f"Error executing command sign: {rawResult} {command_string}"
+                rawResult
             )
-            rawResult = None
         return rawResult
 
     def submit_transaction(self):
@@ -861,21 +910,24 @@ class Node(Starter):
                 quantity_array = []
                 mint_array = []
                 total_mint_name_len = 0
-                length_mint = 0
+                # length_mint = 0
                 slot_validity = None
                 type_validity = None
                 mint_quantity = 0
-                action = None
+                action = "send"
                 mint_name = ""
                 if mint is not None:
-                    length_mint = len(mint.get("tokens"))
-                    policyid = mint.get("policyID")
-                    policy_path = mint.get("policy_path")
+                    # length_mint = len(mint.get("tokens"))
+                    policyid = mint["policyID"]
+                    policy_path = self.MINT_FOLDER  + '/' + policyid + '.script'
                     # Find the validity time interval of the script if any.
-                    validity_interval = mint.get("validity_interval", None)
-                    if validity_interval is not None:
-                        slot_validity = validity_interval.get("slot", None)
-                        type_validity = validity_interval.get("type", None)
+                    with open (policy_path, 'r') as file:
+                        script_content = json.load(file)
+                    scripts = script_content.get("scripts")
+                    for script in scripts:
+                        if script["type"] != "sig":
+                            type_validity = script["type"]
+                            slot_validity = script["slot"]
                     for token in mint["tokens"]:
                         action = token["action"]
                         mint_name = token.get("name").encode("utf-8")
@@ -956,12 +1008,13 @@ class Node(Starter):
                                         raise Exception()
                                 asset_output_string = asset_output_string[:-1]
 
-                            min_utxo_value = self.min_utxo_lovelace(
-                                length_mint + length_assets,
-                                total_mint_name_len + total_asset_name_len,
-                                utxoCostPerWord,
-                                "",
-                            )
+                            # min_utxo_value = self.min_utxo_lovelace(
+                            #     length_mint + length_assets,
+                            #     total_mint_name_len + total_asset_name_len,
+                            #     utxoCostPerWord,
+                            #     "",
+                            # )
+                            min_utxo_value = 2000000
                             if quantity == 0:
                                 quantity = min_utxo_value
                             if quantity >= min_utxo_value:
@@ -1043,8 +1096,9 @@ class Node(Starter):
                     coin_name = mint_name
                     target_calculated = abs(mint_quantity)
                 TxHash_in, amount_equal = self.utxo_selection(
-                    addr_origin_tx, target_calculated, coin_name=coin_name, action=action # type: ignore
+                    addr_origin_tx, target_calculated, min_utxo_value, coin_name=coin_name, action=action
                  )
+
                 if TxHash_in_asset != [] and TxHash_in != []:
                     TxHash_in = TxHash_in + TxHash_in_asset  # type: ignore
                     TxHash_in = list(set(TxHash_in))  # remove utxo duplicates

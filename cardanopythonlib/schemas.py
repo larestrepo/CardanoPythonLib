@@ -44,14 +44,6 @@ build_tx_components_schema = {
                 "dependencies": "address_origin",
                 "schema": {
                     "policyID": {"type": "string", "required": True},
-                    "policy_path": {"type": "string", "required": True},
-                    "validity_interval": {
-                        "type": "dict",
-                        "schema": {
-                            "type": {"type": "string", "required": True},
-                            "slot": {"type": "integer", "required": True},
-                        },
-                    },
                     "tokens": {
                         "type": "list",
                         "required": False,
@@ -83,16 +75,11 @@ build_tx_components_schema = {
         }
 
 create_simple_script_schema = {
-    "name": {
-        "type": "string",
-        "required": True,
-    },
     "type": {
         "type": "string",
         "required": True,
         "empty": False,
         "allowed": ["all", "any", "atLeast"],
-        "dependencies": "name"
     },
     "required": {
         "type": "integer",
@@ -104,25 +91,23 @@ create_simple_script_schema = {
     "hashes": {
         "type": "list",
         "required": True,
-        "dependencies": "name"
     },
     "type_time": {
         "type": "string",
         "required": False,
         "empty": False,
         "allowed": ["before", "after"],
-        "dependencies": ["name", "slot"]
+        "dependencies": "slot"
     },
     "slot": {
         "type": "integer",
         "required": False,
         "empty": False,
-        "dependencies": ["name", "type_time"]
+        "dependencies": "type_time"
     },
     "purpose": {
         "type": "string",
         "required": True,
         "allowed": ["mint", "multisig", "plutus"],
-        "dependencies": "name"
     }
 }
