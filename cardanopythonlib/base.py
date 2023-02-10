@@ -14,6 +14,9 @@ from itertools import chain, groupby
 from operator import itemgetter
 from typing import Tuple, Union, List, Literal
 import uuid
+from dataclasses import dataclass, field
+
+# from datatypes.serialization import (CBORSerializable)
 
 from cerberus import Validator
 
@@ -32,7 +35,7 @@ from path_utils import (
 
 CARDANO_CONFIGS = f"{WORKING_DIR}/config/cardano_config.ini"
 
-
+@dataclass
 class Starter:
 
     """
@@ -47,57 +50,56 @@ class Starter:
         follow our node setup, but it is advisable to be modified based on your
         system needs.
     """
+    config_path=CARDANO_CONFIGS
+    params = config(config_path, section="node")
+    if params is not None:
+        # Initializing variables
+        CARDANO_NETWORK_MAGIC = params.get("cardano_network_magic")
+        CARDANO_CLI_PATH = params.get("cardano_cli_path")
+        CARDANO_NETWORK = params.get("cardano_network")
+        CARDANO_ERA = params.get("cardano_era")
+        TRANSACTION_PATH_FILE = str(params.get("transaction_path_file"))
+        KEYS_FILE_PATH = str(params.get("keys_file_path"))
+        SCRIPTS_FILE_PATH = str(params.get("scripts_file_path"))
+        URL = params.get("url")
+        PLUTUS_FOLDER = SCRIPTS_FILE_PATH + "/plutus"
+        MINT_FOLDER = SCRIPTS_FILE_PATH + "/mint"
+        MULTISIG_FOLDER = SCRIPTS_FILE_PATH + "/multisig"
 
-    def __init__(self, config_path=CARDANO_CONFIGS):
-        params = config(config_path, section="node")
-        if params is not None:
-            # Initializing variables
-            self.CARDANO_NETWORK_MAGIC = params.get("cardano_network_magic")
-            self.CARDANO_CLI_PATH = params.get("cardano_cli_path")
-            self.CARDANO_NETWORK = params.get("cardano_network")
-            self.CARDANO_ERA = params.get("cardano_era")
-            self.TRANSACTION_PATH_FILE = str(params.get("transaction_path_file"))
-            self.KEYS_FILE_PATH = str(params.get("keys_file_path"))
-            self.SCRIPTS_FILE_PATH = str(params.get("scripts_file_path"))
-            self.URL = params.get("url")
-            self.PLUTUS_FOLDER = self.SCRIPTS_FILE_PATH + "/plutus"
-            self.MINT_FOLDER = self.SCRIPTS_FILE_PATH + "/mint"
-            self.MULTISIG_FOLDER = self.SCRIPTS_FILE_PATH + "/multisig"
+        # Setting up the logger level
+        params = config(config_path, section="logger")
+        LOGGER = getlogger(__name__, params.get("level"))
 
-            # Setting up the logger level
-            params = config(config_path, section="logger")
-            self.LOGGER = getlogger(__name__, params.get("level"))
+        if not os.path.exists(TRANSACTION_PATH_FILE):
+            os.makedirs(TRANSACTION_PATH_FILE)
+            LOGGER.debug(
+                f"Creation of the transaction folder in: {TRANSACTION_PATH_FILE}"
+            )
+        if not os.path.exists(KEYS_FILE_PATH):
+            os.makedirs(KEYS_FILE_PATH, exist_ok=True)
+            LOGGER.debug(
+                f"Creation of the keys folder in: {KEYS_FILE_PATH}"
+            )
+        if not os.path.exists(SCRIPTS_FILE_PATH):
+            os.makedirs(SCRIPTS_FILE_PATH, exist_ok=True)
 
-            if not os.path.exists(self.TRANSACTION_PATH_FILE):
-                os.makedirs(self.TRANSACTION_PATH_FILE)
-                self.LOGGER.debug(
-                    f"Creation of the transaction folder in: {self.TRANSACTION_PATH_FILE}"
-                )
-            if not os.path.exists(self.KEYS_FILE_PATH):
-                os.makedirs(self.KEYS_FILE_PATH, exist_ok=True)
-                self.LOGGER.debug(
-                    f"Creation of the keys folder in: {self.KEYS_FILE_PATH}"
-                )
-            if not os.path.exists(self.SCRIPTS_FILE_PATH):
-                os.makedirs(self.SCRIPTS_FILE_PATH, exist_ok=True)
-
-                create_folder(
-                    [self.PLUTUS_FOLDER, self.MINT_FOLDER, self.MULTISIG_FOLDER]
-                )
-                self.LOGGER.debug(
-                    f"Creation of the scripts folder in: {self.SCRIPTS_FILE_PATH} and subfolders: {self.PLUTUS_FOLDER}, {self.MINT_FOLDER} and {self.MULTISIG_FOLDER}"
-                )
-            if self.CARDANO_NETWORK == "testnet":
-                self.LOGGER.debug(
-                    f"Working on CARDANO_NETWORK: {self.CARDANO_NETWORK} with CARDANO_NETWORK_MAGIC: {self.CARDANO_NETWORK_MAGIC}"
-                )
-            else:
-                self.LOGGER.debug(f"Working on CARDANO_NETWORK: {self.CARDANO_NETWORK}")
-            self.LOGGER.debug(
-                f"If you are using cardano-wallet, this is the default internal url: {self.URL}"
+            create_folder(
+                [PLUTUS_FOLDER, MINT_FOLDER, MULTISIG_FOLDER]
+            )
+            LOGGER.debug(
+                f"Creation of the scripts folder in: {SCRIPTS_FILE_PATH} and subfolders: {PLUTUS_FOLDER}, {MINT_FOLDER} and {MULTISIG_FOLDER}"
+            )
+        if CARDANO_NETWORK == "testnet":
+            LOGGER.debug(
+                f"Working on CARDANO_NETWORK: {CARDANO_NETWORK} with CARDANO_NETWORK_MAGIC: {CARDANO_NETWORK_MAGIC}"
             )
         else:
-            print("Problems loading the cardano_config file")
+            LOGGER.debug(f"Working on CARDANO_NETWORK: {CARDANO_NETWORK}")
+        LOGGER.debug(
+            f"If you are using cardano-wallet, this is the default internal url: {URL}"
+        )
+    else:
+        print("Problems loading the cardano_config file")
 
     def insert_command(self, index, step, command_string, opt_commands):
         """
@@ -159,6 +161,53 @@ class Starter:
 
         return minUTxOValue
 
+    def min_required_utxo(
+        self, tx_out_address: str, tx_out_tokens: str = "", *reference_data
+    ) -> int:
+        """_summary_
+
+        :param str tx_out_address: destination address in bech32 format (addr_....)
+        :param str tx_out_tokens: concatenation of tokens to be sent to this address, defaults to ""
+        :param dict **reference_data: with Vasil it is possible to add inline datum or reference scripts
+        most common options for datum:
+        - "--tx-out-datum-hash-file", path to file or
+        - "--tx-out-datum-hash-value", hash datum value or
+        - "--tx-out-inline-datum-file", path to file or
+        - "--tx-out-inline-datum-value", datum value or
+        And for Plutus script:
+        - "--tx-out-reference-script", reference script input file
+        Example:
+        min_required_utxo(tx_out_address, mint_output_string,"--tx-out-inline-datum-value", inline_datum
+        """
+        print("Executing min_required_utxo calculation")
+        min_utxo = 0
+        while True:
+            previous_min_utxo = min_utxo
+            address = f"{tx_out_address}+{str(min_utxo)}{tx_out_tokens}"
+            # if tx_out_tokens !="":
+            # else:
+            #     address = f"{tx_out_address}+{str(0)}"
+            command_string = [
+                self.CARDANO_CLI_PATH,
+                "transaction",
+                "calculate-min-required-utxo",
+                "--tx-out",
+                address,
+                "--protocol-params-file",
+                self.TRANSACTION_PATH_FILE + "/protocol.json",
+            ]
+            if reference_data:
+                command_string, index = self.insert_command(
+                    5, 1, command_string, reference_data
+                )
+            self.LOGGER.info(command_string)
+            min_utxo = self.execute_command(command_string, None)
+            min_utxo = int(min_utxo.split(" ")[1][:-1])
+            if min_utxo == previous_min_utxo:
+                break
+        self.LOGGER.info(min_utxo)
+        return int(min_utxo)
+
     @staticmethod
     def cat_files(path, name):
         # Generate master key
@@ -180,14 +229,91 @@ class Starter:
             )
         return command_string
 
+@dataclass()
+class Mint(Starter):
 
+    mint: Union[dict, None] = field(init=True, default=None)
+    # tokens: dict
+    # policy_path: str = field(init=False, default="")
+    # scripts: dict = field(init=False)
+    
+    def __post_init__(self):
+        if self.mint:
+            self.tokens = self.mint["tokens"]
+            self.policyid = self.mint["policyID"]
+            self.policy_path = self.MINT_FOLDER + '/' + self.policyid + '.script'
+            with open (self.policy_path, 'r') as file:
+                script_content = json.load(file)
+            self.scripts = script_content.get("scripts")
+        else:
+            self.tokens = {}
+            self.policyid = ""
+            self.policy_path = ""
+            self.scripts = {}
+            
+
+    def coin_name(self) -> str:
+        mint_name = "lovelace"
+        if self.policy_path:
+            for token in self.tokens:
+                mint_name = token["name"].encode("utf-8")
+                mint_name = b16encode(mint_name).decode("utf-8").lower()
+                mint_name = str(self.policyid + "." + mint_name)
+        
+        return mint_name
+    
+    def mint_quantity(self) -> int:  # type: ignore
+        for token in self.tokens:
+            return int(token["amount"])
+
+    def mint_string(self) -> Tuple[list[str], str, str]:
+        # mint_quantity_array = []
+        mint_output_string = ''
+        mint_array = []
+        action = "mint"
+        if self.tokens:
+            for token in self.tokens:
+                action = token["action"]
+                mint_name = self.coin_name()
+                mint_quantity = self.mint_quantity()
+                # mint_quantity = token["amount"] if action == "mint"  else (-1)*token["amount"]
+                # mint_quantity_array.append(mint_quantity)
+                mint_output_string += (str((-1)*mint_quantity) + " "+ mint_name) if action == "burn" else (str(mint_quantity) + " "+ mint_name+ "+")
+            if mint_output_string[-1] == '+':
+                mint_output_string = mint_output_string[:-1]
+            mint_string = "--mint="
+            mint_string = mint_string + mint_output_string
+            mint_output_string = "" if action == "burn" else "+" + mint_output_string
+            mint_array.append(mint_string)
+            mint_array.append("--mint-script-file")
+            mint_array.append(self.policy_path)
+        return mint_array, mint_output_string, action
+    
+    def ttl(self) -> Tuple[str, str]:
+        type_validity = ""
+        slot_validity = ""
+        for script in self.scripts:
+            if script["type"] != "sig":
+                type_validity = script["type"]
+                slot_validity = script["slot"]
+        return type_validity, slot_validity
+
+    def min_utxo(self, tx_out_tokens: str, source_address: str="addr_test1vp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qcul3azr") -> int:
+        return self.min_required_utxo(source_address, tx_out_tokens)
+
+@dataclass()
+class TxOutput(Starter):
+    pass
+
+
+@dataclass()
 class Node(Starter):
     """
     Class using primarly Cardano CLI commands
     """
 
-    def __init__(self, config_path=CARDANO_CONFIGS):
-        super().__init__(config_path)
+    # def __init__(self, config_path=CARDANO_CONFIGS):
+    #     super().__init__(config_path)
 
     def id_to_address(self, wallet_name: str) -> str:
         """Get payment address stored locally from wallet_name; if address is
@@ -308,53 +434,6 @@ class Node(Starter):
         self.LOGGER.info(rawResult)
         return rawResult
 
-    def min_required_utxo(
-        self, tx_out_address: str, tx_out_tokens: str = "", *reference_data
-    ) -> int:
-        """_summary_
-
-        :param str tx_out_address: destination address in bech32 format (addr_....)
-        :param str tx_out_tokens: concatenation of tokens to be sent to this address, defaults to ""
-        :param dict **reference_data: with Vasil it is possible to add inline datum or reference scripts
-        most common options for datum:
-        - "--tx-out-datum-hash-file", path to file or
-        - "--tx-out-datum-hash-value", hash datum value or
-        - "--tx-out-inline-datum-file", path to file or
-        - "--tx-out-inline-datum-value", datum value or
-        And for Plutus script:
-        - "--tx-out-reference-script", reference script input file
-        Example:
-        min_required_utxo(tx_out_address, mint_output_string,"--tx-out-inline-datum-value", inline_datum
-        """
-        print("Executing min_required_utxo calculation")
-        min_utxo = 0
-        while True:
-            previous_min_utxo = min_utxo
-            address = f"{tx_out_address}+{str(min_utxo)}{tx_out_tokens}"
-            # if tx_out_tokens !="":
-            # else:
-            #     address = f"{tx_out_address}+{str(0)}"
-            command_string = [
-                self.CARDANO_CLI_PATH,
-                "transaction",
-                "calculate-min-required-utxo",
-                "--tx-out",
-                address,
-                "--protocol-params-file",
-                self.TRANSACTION_PATH_FILE + "/protocol.json",
-            ]
-            if reference_data:
-                command_string, index = self.insert_command(
-                    5, 1, command_string, reference_data
-                )
-            self.LOGGER.info(command_string)
-            min_utxo = self.execute_command(command_string, None)
-            min_utxo = int(min_utxo.split(" ")[1][:-1])
-            if min_utxo == previous_min_utxo:
-                break
-        self.LOGGER.info(min_utxo)
-        return int(min_utxo)
-
     def get_transactions(self, wallet_id: str) -> list[dict]:
         """Get the list of transactions from the given addresses.
         Args: Cardano Blockchain address or wallet id to search for UTXOs
@@ -454,8 +533,8 @@ class Node(Starter):
         quantity: int= 2000000,
         min_utxo: int= 500000,
         deplete: bool = False,
-        action: Literal["burn", "mint", "send"]="send",
         coin_name: str = "lovelace",
+        action: str= "send",
     ) -> Tuple[list, int]:
         """Function based on the coin selection algorithm to properly handle
         the use of utxos in the wallet.
@@ -525,56 +604,19 @@ class Node(Starter):
         amount_equal = 0
         utxo_found = False
         if addr_origin_tx:
-            filtered_utxos = []
             utxo_only_lovelace = list(filter(lambda utxo: len(utxo["amounts"]) == 1, addr_origin_tx))
             utxo_with_tokens = list(filter(lambda utxo: len(utxo["amounts"]) != 1, addr_origin_tx))
-            if (action == "burn") or (action == "send" and coin_name != "lovelace"):
-                # filtered_utxos = utxo_with_tokens
+            if coin_name != "lovelace":
                 TxHash, amount_equal, utxo_found = selection(utxo_with_tokens, quantity, coin_name=coin_name)
                 if utxo_found and ((amount_equal - min_utxo) < 500000):
                     quantity = min_utxo
                     coin_name = "lovelace"
                     TxHash, amount_equal, utxo_found = selection(utxo_only_lovelace, quantity, coin_name=coin_name)
 
-            if action == "mint" or (action == "send" and coin_name == "lovelace"):
-                # filtered_utxos = utxo_only_lovelace
+            else:
                 TxHash, amount_equal, utxo_found = selection(utxo_only_lovelace, quantity, coin_name=coin_name)
-            
-            # TxHash, amount_equal, utxo_found = selection(filtered_utxos)
-            
-
-            # for utxo in filtered_utxos:
-            #     for amount in utxo["amounts"]:
-            #         if amount.get("token") == coin_name:
-            #             if deplete:
-            #                 # TxHash.append('--tx-in')
-            #                 TxHash.append(utxo["hash"] + "#" + utxo.get("id"))
-            #                 amount_equal += int(amount.get("amount"))
-            #                 utxo_found = True
-            #                 break
-            #             if int(amount.get("amount")) == quantity + minCost:
-            #                 # TxHash.append('--tx-in')
-            #                 TxHash.append(utxo["hash"] + "#" + utxo.get("id"))
-            #                 amount_equal =sum([int(amount["amount"]) for amount in utxo["amounts"] if amount["token"] == "lovelace"])
-            #                 # amount_equal = int(amount.get("amount"))
-            #                 utxo_found = True
-            #                 break
-            #             elif int(amount.get("amount")) < quantity + minCost:
-            #                 TxHash_lower.append(utxo["hash"] + "#" + utxo.get("id"))
-            #                 amount_lower.append(int(amount.get("amount")))
-            #             elif int(amount.get("amount")) > quantity + minCost:
-            #                 TxHash_greater.append(
-            #                     utxo["hash"] + "#" + utxo.get("id")
-            #                 )
-            #                 amount_greater.append(int(amount.get("amount")))
-            #     else:
-            #         continue
-            #     break
-
             if not utxo_found: # If more than 1 utxo 
                 if sum(amount_lower) == quantity + minCost:
-                    # TxHash.append('--tx-in')
-                    # TxHash.append(TxHash_lower)
                     TxHash = TxHash_lower
                     amount_equal = sum(amount_lower)
                 elif sum(amount_lower) < quantity + minCost:
@@ -870,21 +912,280 @@ class Node(Starter):
         from schemas import build_tx_components_schema as schema
 
         v = Validator()
-        try:
-            assert v.validate(params, schema)  # type: ignore
-            # Unpacking the minimum required arguments
-            address_origin = str(params.get("address_origin"))
-            # Validate address
-            address_origin = self.id_to_address(address_origin)
+        # try:
+        assert v.validate(params, schema)  # type: ignore
+        # Unpacking the minimum required arguments
+        address_origin = str(params.get("address_origin"))
+        # Validate address
+        address_origin = self.id_to_address(address_origin)
 
-            # Unpacking optional arguments
-            change_address = params.get("change_address")
-            address_destin_array = params.get("address_destin", None)
-            metadata = params.get("metadata", None)
-            mint = params.get("mint", None)
-            script_path = params.get("script_path", None)
-            witness = params.get("witness", None)
-            inline_datum = params.get("inline_datum", None)
+        # Unpacking optional arguments
+        change_address = params.get("change_address")
+        address_destin_array = params.get("address_destin", None)
+        metadata = params.get("metadata", None)
+        mint = params.get("mint", None)
+        script_path = params.get("script_path", None)
+        witness = params.get("witness", None)
+        inline_datum = params.get("inline_datum", None)
+        inline_datum_array = []
+
+        if inline_datum is not None:
+            inline_datum_json_file = save_metadata(
+                self.TRANSACTION_PATH_FILE, "tx_inline_datum.json", inline_datum
+            )
+            inline_datum_array.append("--tx-out-inline-datum-file")
+            inline_datum_array.append(inline_datum_json_file)
+
+        rawResult = self.query_protocol(True)
+        init_min_utxo_value = self.min_required_utxo(address_origin)
+        min_utxo_value = 0
+
+        addr_origin_balance = self.get_balance(address_origin)
+        addr_origin_tx = self.get_transactions(address_origin)
+        if addr_origin_balance.get("lovelace") is not None:
+            addr_output_array = []
+            quantity_array = []
+            mint_array = []
+            ttl_validity = ""
+            ttl_slot = ""
+            mint = Mint(mint)
+            mint_array, mint_output_string, action = mint.mint_string()
+            ttl_validity, ttl_slot = mint.ttl()
+            mint_utxo_value = mint.min_utxo(mint_output_string)
+            coin_name = mint.coin_name()
+
+            asset_output_string = ""
+            TxHash_in_asset = []
+            total_asset_name_len = 0
+            if address_destin_array is not None:
+                for address_destin in address_destin_array:
+                    total_asset_name_len = 0
+                    tx_out_address = address_destin.get("address")
+                    amount = address_destin.get("amount", None)
+                    if amount is None:
+                        amount = 0
+                    quantity = amount
+                    if (
+                        address_destin.get("tokens") is not None
+                        and address_destin.get("tokens") != []
+                    ):
+                        asset_output_string = ""
+                        for asset in address_destin.get("tokens"):
+                            asset_name = asset.get("name").encode("utf-8")
+                            asset_name = b16encode(asset_name).decode("utf-8")
+                            asset_name = asset_name.lower()
+                            total_asset_name_len += len(asset_name)
+                            amount = asset.get("amount")
+                            policyID = asset.get("policyID")
+                            asset_full_name = policyID + "." + asset_name
+                            if mint is not None:
+                                asset_output_string += (
+                                    str(amount) + " " + asset_full_name + "+"
+                                )
+                            else:
+                                if asset_full_name in addr_origin_balance:
+                                    asset_balance = addr_origin_balance.get(
+                                        asset_full_name
+                                    )
+                                    if amount <= asset_balance:
+                                        (
+                                            TxHash_in,
+                                            amount_equal,
+                                        ) = self.utxo_selection(
+                                            addr_origin_tx, amount
+                                        )
+                                        asset_output_string += (
+                                            str(amount)
+                                            + " "
+                                            + asset_full_name
+                                            + "+"
+                                        )
+                                        TxHash_in_asset += TxHash_in
+                                    else:
+                                        self.LOGGER.error(
+                                            f"Balance not enough asset_balance: {asset_balance}, amount: {amount}"
+                                        )
+                                        raise Exception()
+                                else:
+                                    self.LOGGER.error(
+                                        f"{asset_full_name} could not be found in wallet origin"
+                                    )
+                                    raise Exception()
+                            asset_output_string = asset_output_string[:-1]
+                        min_utxo_value = 2000000
+                        if quantity == 0:
+                            quantity = min_utxo_value
+                        if quantity >= min_utxo_value:
+                            quantity_array.append(quantity)
+                            addr_output_array.append("--tx-out")
+                            addr_output_array.append(
+                                tx_out_address
+                                + "+"
+                                + str(quantity)
+                                + "+"
+                                + asset_output_string
+                            )
+                        else:
+                            self.LOGGER.error(
+                                f"Quantity to send less than min_utxo_value of: {min_utxo_value}"
+                            )
+                            raise Exception()
+                    else:
+                        # Calculate the min ADA in Utxo
+                        if inline_datum is not None:
+                            min_utxo_value = self.min_required_utxo(
+                                address_origin,
+                                mint_output_string,
+                                inline_datum_array[0],
+                                inline_datum_array[1],
+                            )
+                        else:
+                            min_utxo_value = self.min_required_utxo(
+                                address_origin, mint_output_string
+                            )
+                        if quantity == 0:
+                            quantity = min_utxo_value
+                        if quantity >= min_utxo_value:
+                            quantity_array.append(quantity)
+                            addr_output_array.append("--tx-out")
+                            addr_output_array.append(
+                                tx_out_address
+                                + "+"
+                                + str(quantity)
+                                + mint_output_string
+                            )
+                        else:
+                            self.LOGGER.error(
+                                f"Quantity to send less than min_utxo_value of: {min_utxo_value}"
+                            )
+                            raise Exception()
+            else:
+                quantity = 0
+                if inline_datum is not None:
+                    min_utxo_value = self.min_required_utxo(
+                        address_origin,
+                        mint_output_string,
+                        inline_datum_array[0],
+                        inline_datum_array[1],
+                    )
+                else:
+                    min_utxo_value = self.min_required_utxo(
+                        address_origin, mint_output_string
+                    )
+                if mint.mint is not None and action == "mint":
+                    addr_output_array.append("--tx-out")
+                    addr_output_array.append(
+                        address_origin
+                        + "+"
+                        + str(mint_utxo_value)
+                        + mint_output_string
+                    )
+                else:
+                    if quantity == 0:
+                        quantity = min_utxo_value
+                    if quantity >= min_utxo_value:
+                        quantity_array.append(quantity)
+                        addr_output_array.append("--tx-out")
+                        addr_output_array.append(
+                            address_origin
+                            + "+"
+                            + str(quantity)
+                            + mint_output_string
+                        )
+                    else:
+                        self.LOGGER.error(
+                            f"Quantity to send less than min_utxo_value of: {min_utxo_value}"
+                        )
+                        raise Exception()
+            if change_address is not None:
+                change_address = self.id_to_address(change_address)
+            else:
+                change_address = address_origin
+            addr_output_array.append("--change-address")
+            addr_output_array.append(change_address)
+            # if quantity_array == [] and action == "mint":
+            #     target_calculated = min_utxo_value + init_min_utxo_value
+            # else: 
+            #     target_calculated = sum(quantity_array) + init_min_utxo_value
+            # coin_name = "lovelace"
+            if action == "burn":
+                target_calculated = mint.mint_quantity()
+            else: 
+                target_calculated = max(sum(quantity_array), min_utxo_value) + init_min_utxo_value
+                coin_name = "lovelace"
+            TxHash_in, amount_equal = self.utxo_selection(
+                addr_origin_tx, target_calculated, min_utxo_value, coin_name=coin_name, action=action)
+
+            if TxHash_in_asset != [] and TxHash_in != []:
+                TxHash_in = TxHash_in + TxHash_in_asset  # type: ignore
+                TxHash_in = list(set(TxHash_in))  # remove utxo duplicates
+            tx_in = len(TxHash_in) * ["--tx-in"]
+            TxHash_in = list(chain(*zip(tx_in, TxHash_in)))  # Intercalate elements
+
+            if witness is not None:
+                witness = str(witness)
+            else:
+                witness = str(1)
+            #########################################################
+            command_string = [
+                self.CARDANO_CLI_PATH,
+                "transaction",
+                "build",
+                "--witness-override",
+                witness,
+                "--out-file",
+                self.TRANSACTION_PATH_FILE + "/tx.draft",
+            ]
+            i = 0
+            command_string, index = self.insert_command(
+                3 + i, 1, command_string, TxHash_in
+            )
+            i = i + index
+            command_string, index = self.insert_command(
+                3 + i, 1, command_string, addr_output_array
+            )
+            i = i + index
+            metadata_array = []
+            if metadata is not None:
+                metadata_json_file = save_metadata(
+                    self.TRANSACTION_PATH_FILE, "tx_metadata.json", metadata
+                )
+                metadata_array.append("--metadata-json-file")
+                metadata_array.append(metadata_json_file)
+                command_string, index = self.insert_command(
+                    3 + i, 1, command_string, metadata_array
+                )
+                i = i + index
+            if mint_array != []:
+                command_string, index = self.insert_command(
+                    3 + i, 1, command_string, mint_array
+                )
+                i = i + index
+                if ttl_validity != "" and ttl_slot != "":
+                    invalid = None
+                    if ttl_validity == "before":
+                        invalid = "--invalid-hereafter"
+                    elif ttl_validity == "after":
+                        invalid = "--invalid-before"
+                    else:
+                        self.LOGGER.error(
+                            f"Not supported type validity in the minting script {ttl_validity}"
+                        )
+                        raise TypeError()
+                    command_string, index = self.insert_command(
+                        3 + i, 1, command_string, [invalid, ttl_slot]
+                    )
+                    i = i + index
+
+            script_path_array = []
+            if script_path is not None:
+                script_path_array.append("--tx-in-script-file")
+                script_path_array.append(script_path)
+                command_string, index = self.insert_command(
+                    3 + i, 1, command_string, script_path_array
+                )
+                i = i + index
+
             inline_datum_array = []
             if inline_datum is not None:
                 inline_datum_json_file = save_metadata(
@@ -892,336 +1193,52 @@ class Node(Starter):
                 )
                 inline_datum_array.append("--tx-out-inline-datum-file")
                 inline_datum_array.append(inline_datum_json_file)
-
-            rawResult = self.query_protocol(True)
-            # with open(self.TRANSACTION_PATH_FILE + "/protocol.json", "r") as file:
-            #     utxoCostPerWord = json.load(file).get("utxoCostPerWord")
-            utxoCostPerWord = rawResult.get("utxoCostPerWord")
-            if utxoCostPerWord is None:
-                utxoCostPerWord = 34480
-            min_utxo_value = 0
-
-            addr_origin_balance = self.get_balance(address_origin)
-            addr_origin_tx = self.get_transactions(address_origin)
-            if addr_origin_balance.get("lovelace") is not None:
-                mint_output_string = ""
-                addr_output_array = []
-                mint_quantity_array = []
-                quantity_array = []
-                mint_array = []
-                total_mint_name_len = 0
-                # length_mint = 0
-                slot_validity = None
-                type_validity = None
-                mint_quantity = 0
-                action = "send"
-                mint_name = ""
-                if mint is not None:
-                    # length_mint = len(mint.get("tokens"))
-                    policyid = mint["policyID"]
-                    policy_path = self.MINT_FOLDER  + '/' + policyid + '.script'
-                    # Find the validity time interval of the script if any.
-                    with open (policy_path, 'r') as file:
-                        script_content = json.load(file)
-                    scripts = script_content.get("scripts")
-                    for script in scripts:
-                        if script["type"] != "sig":
-                            type_validity = script["type"]
-                            slot_validity = script["slot"]
-                    for token in mint["tokens"]:
-                        action = token["action"]
-                        mint_name = token.get("name").encode("utf-8")
-                        mint_name = b16encode(mint_name).decode("utf-8").lower()
-                        mint_name = str(policyid + "." + mint_name)
-                        mint_quantity = token.get("amount") if action == "mint"  else (-1)*token.get("amount")
-                        mint_quantity_array.append(mint_quantity)
-                        total_mint_name_len += len(mint_name)
-                        mint_output_string += (str(mint_quantity) + " "+ mint_name+ "+")
-
-                    mint_output_string = mint_output_string[:-1]
-                    mint_string = "--mint="
-                    mint_string = mint_string + mint_output_string
-                    mint_output_string = "" if action == "burn" else "+" + mint_output_string
-                    mint_array.append(mint_string)
-                    mint_array.append("--mint-script-file")
-                    mint_array.append(policy_path)
-
-                asset_output_string = ""
-                TxHash_in_asset = []
-                length_assets = 0
-                total_asset_name_len = 0
-                if address_destin_array is not None:
-                    for address_destin in address_destin_array:
-                        length_assets = 0
-                        total_asset_name_len = 0
-                        tx_out_address = address_destin.get("address")
-                        amount = address_destin.get("amount", None)
-                        if amount is None:
-                            amount = 0
-                        quantity = amount
-                        if (
-                            address_destin.get("tokens") is not None
-                            and address_destin.get("tokens") != []
-                        ):
-                            length_assets = len(address_destin.get("tokens"))
-                            asset_output_string = ""
-                            for asset in address_destin.get("tokens"):
-                                asset_name = asset.get("name").encode("utf-8")
-                                asset_name = b16encode(asset_name).decode("utf-8")
-                                asset_name = asset_name.lower()
-                                total_asset_name_len += len(asset_name)
-                                amount = asset.get("amount")
-                                policyID = asset.get("policyID")
-                                asset_full_name = policyID + "." + asset_name
-                                if mint is not None:
-                                    asset_output_string += (
-                                        str(amount) + " " + asset_full_name + "+"
-                                    )
-                                else:
-                                    if asset_full_name in addr_origin_balance:
-                                        asset_balance = addr_origin_balance.get(
-                                            asset_full_name
-                                        )
-                                        if amount <= asset_balance:
-                                            (
-                                                TxHash_in,
-                                                amount_equal,
-                                            ) = self.utxo_selection(
-                                                addr_origin_tx, amount
-                                            )
-                                            asset_output_string += (
-                                                str(amount)
-                                                + " "
-                                                + asset_full_name
-                                                + "+"
-                                            )
-                                            TxHash_in_asset += TxHash_in
-                                        else:
-                                            self.LOGGER.error(
-                                                f"Balance not enough asset_balance: {asset_balance}, amount: {amount}"
-                                            )
-                                            raise Exception()
-                                    else:
-                                        self.LOGGER.error(
-                                            f"{asset_full_name} could not be found in wallet origin"
-                                        )
-                                        raise Exception()
-                                asset_output_string = asset_output_string[:-1]
-
-                            # min_utxo_value = self.min_utxo_lovelace(
-                            #     length_mint + length_assets,
-                            #     total_mint_name_len + total_asset_name_len,
-                            #     utxoCostPerWord,
-                            #     "",
-                            # )
-                            min_utxo_value = 2000000
-                            if quantity == 0:
-                                quantity = min_utxo_value
-                            if quantity >= min_utxo_value:
-                                quantity_array.append(quantity)
-                                addr_output_array.append("--tx-out")
-                                addr_output_array.append(
-                                    tx_out_address
-                                    + "+"
-                                    + str(quantity)
-                                    + "+"
-                                    + asset_output_string
-                                )
-                            else:
-                                self.LOGGER.error(
-                                    f"Quantity to send less than min_utxo_value of: {min_utxo_value}"
-                                )
-                                raise Exception()
-                        else:
-                            # Calculate the min ADA in Utxo
-                            if inline_datum is not None:
-                                min_utxo_value = self.min_required_utxo(
-                                    address_origin,
-                                    mint_output_string,
-                                    inline_datum_array[0],
-                                    inline_datum_array[1],
-                                )
-                            else:
-                                min_utxo_value = self.min_required_utxo(
-                                    address_origin, mint_output_string
-                                )
-                            if quantity == 0:
-                                quantity = min_utxo_value
-                            if quantity >= min_utxo_value:
-                                quantity_array.append(quantity)
-                                addr_output_array.append("--tx-out")
-                                addr_output_array.append(
-                                    tx_out_address
-                                    + "+"
-                                    + str(quantity)
-                                    + mint_output_string
-                                )
-                            else:
-                                self.LOGGER.error(
-                                    f"Quantity to send less than min_utxo_value of: {min_utxo_value}"
-                                )
-                                raise Exception()
-                else:
-                    if inline_datum is not None:
-                        min_utxo_value = self.min_required_utxo(
-                            address_origin,
-                            mint_output_string,
-                            inline_datum_array[0],
-                            inline_datum_array[1],
-                        )
-                    else:
-                        min_utxo_value = self.min_required_utxo(
-                            address_origin, mint_output_string
-                        )
-                    if mint is not None:
-                        addr_output_array.append("--tx-out")
-                        addr_output_array.append(
-                            address_origin
-                            + "+"
-                            + str(min_utxo_value)
-                            + mint_output_string
-                        )
-                if change_address is not None:
-                    change_address = self.id_to_address(change_address)
-                else:
-                    change_address = address_origin
-                addr_output_array.append("--change-address")
-                addr_output_array.append(change_address)
-                if quantity_array == [] and action == "mint":
-                    target_calculated = min_utxo_value
-                else: 
-                    target_calculated = sum(quantity_array)
-                coin_name = "lovelace"
-                if action == "burn": 
-                    coin_name = mint_name
-                    target_calculated = abs(mint_quantity)
-                TxHash_in, amount_equal = self.utxo_selection(
-                    addr_origin_tx, target_calculated, min_utxo_value, coin_name=coin_name, action=action
-                 )
-
-                if TxHash_in_asset != [] and TxHash_in != []:
-                    TxHash_in = TxHash_in + TxHash_in_asset  # type: ignore
-                    TxHash_in = list(set(TxHash_in))  # remove utxo duplicates
-                tx_in = len(TxHash_in) * ["--tx-in"]
-                TxHash_in = list(chain(*zip(tx_in, TxHash_in)))  # Intercalate elements
-
-                if witness is not None:
-                    witness = str(witness)
-                else:
-                    witness = str(1)
-                #########################################################
-                command_string = [
-                    self.CARDANO_CLI_PATH,
-                    "transaction",
-                    "build",
-                    "--witness-override",
-                    witness,
-                    "--out-file",
-                    self.TRANSACTION_PATH_FILE + "/tx.draft",
-                ]
-                i = 0
                 command_string, index = self.insert_command(
-                    3 + i, 1, command_string, TxHash_in
+                    3 + i, 1, command_string, inline_datum_array
+                )
+                i = i + index
+
+            if self.CARDANO_NETWORK == "testnet":
+                command_string, index = self.insert_command(
+                    3 + i,
+                    1,
+                    command_string,
+                    ["--testnet-magic", self.CARDANO_NETWORK_MAGIC],
                 )
                 i = i + index
                 command_string, index = self.insert_command(
-                    3 + i, 1, command_string, addr_output_array
+                    3 + i, 1, command_string, ["--" + str(self.CARDANO_ERA)]
                 )
-                i = i + index
-                metadata_array = []
-                if metadata is not None:
-                    metadata_json_file = save_metadata(
-                        self.TRANSACTION_PATH_FILE, "tx_metadata.json", metadata
-                    )
-                    metadata_array.append("--metadata-json-file")
-                    metadata_array.append(metadata_json_file)
-                    command_string, index = self.insert_command(
-                        3 + i, 1, command_string, metadata_array
-                    )
-                    i = i + index
-                if mint_array != []:
-                    command_string, index = self.insert_command(
-                        3 + i, 1, command_string, mint_array
-                    )
-                    i = i + index
-                    if slot_validity is not None and type_validity is not None:
-                        invalid = None
-                        if type_validity == "before":
-                            invalid = "--invalid-hereafter"
-                        elif type_validity == "after":
-                            invalid = "--invalid-before"
-                        else:
-                            self.LOGGER.error(
-                                f"Not supported type validity in the minting script {type_validity}"
-                            )
-                            raise TypeError()
-                        command_string, index = self.insert_command(
-                            3 + i, 1, command_string, [invalid, slot_validity]
-                        )
-                        i = i + index
-
-                script_path_array = []
-                if script_path is not None:
-                    script_path_array.append("--tx-in-script-file")
-                    script_path_array.append(script_path)
-                    command_string, index = self.insert_command(
-                        3 + i, 1, command_string, script_path_array
-                    )
-                    i = i + index
-
-                inline_datum_array = []
-                if inline_datum is not None:
-                    inline_datum_json_file = save_metadata(
-                        self.TRANSACTION_PATH_FILE, "tx_inline_datum.json", inline_datum
-                    )
-                    inline_datum_array.append("--tx-out-inline-datum-file")
-                    inline_datum_array.append(inline_datum_json_file)
-                    command_string, index = self.insert_command(
-                        3 + i, 1, command_string, inline_datum_array
-                    )
-                    i = i + index
-
-                if self.CARDANO_NETWORK == "testnet":
-                    command_string, index = self.insert_command(
-                        3 + i,
-                        1,
-                        command_string,
-                        ["--testnet-magic", self.CARDANO_NETWORK_MAGIC],
-                    )
-                    i = i + index
-                    command_string, index = self.insert_command(
-                        3 + i, 1, command_string, ["--" + str(self.CARDANO_ERA)]
-                    )
-                else:
-                    command_string, index = self.insert_command(
-                        3 + i, 1, command_string, ["--mainnet"]
-                    )
-                    i = i + index
-                    command_string, index = self.insert_command(
-                        3 + i, 1, command_string, ["--" + str(self.CARDANO_ERA)]
-                    )
-
-                self.LOGGER.info(command_string)
-                rawResult = self.execute_command(command_string, None)
-                self.LOGGER.info(rawResult)
-                if "Estimated transaction fee: Lovelace" not in rawResult:
-                    raise TypeError()
             else:
-                msg = "Not utxos found in the address provided"
-                self.LOGGER.error(msg)
-                rawResult = msg
-        except TypeError:
-            msg = "Missing required arguments"
+                command_string, index = self.insert_command(
+                    3 + i, 1, command_string, ["--mainnet"]
+                )
+                i = i + index
+                command_string, index = self.insert_command(
+                    3 + i, 1, command_string, ["--" + str(self.CARDANO_ERA)]
+                )
+
+            self.LOGGER.info(command_string)
+            rawResult = self.execute_command(command_string, None)
+            self.LOGGER.info(rawResult)
+            if "Estimated transaction fee: Lovelace" not in rawResult:
+                raise TypeError()
+        else:
+            msg = "Not utxos found in the address provided"
             self.LOGGER.error(msg)
             rawResult = msg
-        except AssertionError:
-            msg = f"Errors in the message dictionary format. Check {v.errors}"  # type: ignore
-            self.LOGGER.error(msg)
-            rawResult = msg
-        # except Exception:
-        #     msg = f"Errors while building the transaction. Probably insufficient ada or native asset funds"
-        #     self.LOGGER.error(msg)
-        #     rawResult = msg
+    # except TypeError:
+    #     msg = "Missing required arguments"
+    #     self.LOGGER.error(msg)
+    #     rawResult = msg
+    # except AssertionError:
+    #     msg = f"Errors in the message dictionary format. Check {v.errors}"  # type: ignore
+    #     self.LOGGER.error(msg)
+    #     rawResult = msg
+    # except Exception:
+    #     msg = f"Errors while building the transaction. Probably insufficient ada or native asset funds"
+    #     self.LOGGER.error(msg)
+    #     rawResult = msg
 
         return rawResult
 
@@ -1297,13 +1314,8 @@ class Node(Starter):
 
         return rawResult
 
-
+@dataclass()
 class Keys(Starter):
-    def __init__(self, config_path=CARDANO_CONFIGS):
-        super().__init__(config_path)
-        self.path = self.KEYS_FILE_PATH
-        self.cardano_network = self.CARDANO_NETWORK
-        self.cardano_network_magic = self.CARDANO_NETWORK_MAGIC
 
     def generate_mnemonic(self, size: int = 24) -> list[str]:
         """Create mnemonic sentence (list of mnemonic words)
@@ -1332,16 +1344,16 @@ class Keys(Starter):
         """
         # Save temp mnemonic
         content = " ".join(mnemonic)
-        save_file(self.path, "/temp_mnemonic", content)
+        save_file(self.KEYS_FILE_PATH, "/temp_mnemonic", content)
 
         # Generate master key
-        output = self.cat_files(self.path, "/temp_mnemonic")
+        output = self.cat_files(self.KEYS_FILE_PATH, "/temp_mnemonic")
         command_string = ["cardano-address", "key", "from-recovery-phrase", "Shelley"]
         rawResult = self.execute_command(command_string, output.stdout)
 
         # Delete file mnemonic
         print("Root private key: '%s'" % (rawResult))
-        remove_file(self.path, "/temp_mnemonic")
+        remove_file(self.KEYS_FILE_PATH, "/temp_mnemonic")
         return rawResult
 
     def deriveExtendedSigningStakeKey(self, root_key):
@@ -1354,16 +1366,16 @@ class Keys(Starter):
             [str]: [extended stake signing key xsk]
         """
         # Save temp root_key
-        save_file(self.path, "/temp_root.xsk", str(root_key))
+        save_file(self.KEYS_FILE_PATH, "/temp_root.xsk", str(root_key))
 
-        output = self.cat_files(self.path, "/temp_root.xsk")
+        output = self.cat_files(self.KEYS_FILE_PATH, "/temp_root.xsk")
         # Generate extended stake signing key
         command_string = ["cardano-address", "key", "child", "1852H/1815H/0H/2/0"]
         rawResult = self.execute_command(command_string, output.stdout)
 
         print("Stake extended signing key: '%s'" % (rawResult))
         # Delete file root key
-        remove_file(self.path, "/temp_root.xsk")
+        remove_file(self.KEYS_FILE_PATH, "/temp_root.xsk")
         return rawResult
 
     def deriveExtendedSigningPaymentKey(self, root_key):
@@ -1376,16 +1388,16 @@ class Keys(Starter):
             [str]: [extended payment signing key xsk]
         """
         # Save temp root_key
-        save_file(self.path, "/temp_root.xsk", str(root_key))
+        save_file(self.KEYS_FILE_PATH, "/temp_root.xsk", str(root_key))
 
-        output = self.cat_files(self.path, "/temp_root.xsk")
+        output = self.cat_files(self.KEYS_FILE_PATH, "/temp_root.xsk")
         # Generate extended Payment signing key
         command_string = ["cardano-address", "key", "child", "1852H/1815H/0H/0/0"]
         rawResult = self.execute_command(command_string, output.stdout)
 
         print("Payment extended signing key: '%s'" % (rawResult))
         # Delete file root key
-        remove_file(self.path, "/temp_root.xsk")
+        remove_file(self.KEYS_FILE_PATH, "/temp_root.xsk")
         return rawResult
 
     def deriveExtendedVerificationPaymentKey(self, payment_signing_key):
@@ -1398,16 +1410,16 @@ class Keys(Starter):
             [str]: [extended payment verification key xvk]
         """
         # Save temp root_key
-        save_file(self.path, "/temp_payment.xsk", str(payment_signing_key))
+        save_file(self.KEYS_FILE_PATH, "/temp_payment.xsk", str(payment_signing_key))
 
-        output = self.cat_files(self.path, "/temp_payment.xsk")
+        output = self.cat_files(self.KEYS_FILE_PATH, "/temp_payment.xsk")
         # Generate extended public account key xpub
         command_string = ["cardano-address", "key", "public", "--with-chain-code"]
         rawResult = self.execute_command(command_string, output.stdout)
 
         print("Payment extended verification key: '%s'" % (rawResult))
         # Delete file root key
-        remove_file(self.path, "/temp_payment.xsk")
+        remove_file(self.KEYS_FILE_PATH, "/temp_payment.xsk")
         return rawResult
 
     def deriveExtendedVerificationStakeKey(self, stake_signing_key):
@@ -1420,15 +1432,15 @@ class Keys(Starter):
             [str]: [extended stake verification key xvk]
         """
         # Save temp root_key
-        save_file(self.path, "/temp_stake.xsk", str(stake_signing_key))
+        save_file(self.KEYS_FILE_PATH, "/temp_stake.xsk", str(stake_signing_key))
 
-        output = self.cat_files(self.path, "/temp_stake.xsk")
+        output = self.cat_files(self.KEYS_FILE_PATH, "/temp_stake.xsk")
         # Generate extended public account key xpub
         command_string = ["cardano-address", "key", "public", "--with-chain-code"]
         rawResult = self.execute_command(command_string, output.stdout)
         print("Stake extended verification key: '%s'" % (rawResult))
         # Delete file root key
-        remove_file(self.path, "/temp_stake.xsk")
+        remove_file(self.KEYS_FILE_PATH, "/temp_stake.xsk")
         return rawResult
 
     def derivePaymentAddress(self, payment_verification_key):
@@ -1441,22 +1453,22 @@ class Keys(Starter):
             [str]: [payment public address]
         """
         # Save temp root_key
-        save_file(self.path, "/temp_payment.xvk", str(payment_verification_key))
+        save_file(self.KEYS_FILE_PATH, "/temp_payment.xvk", str(payment_verification_key))
 
-        output = self.cat_files(self.path, "/temp_payment.xvk")
+        output = self.cat_files(self.KEYS_FILE_PATH, "/temp_payment.xvk")
         # Generate extended public account key xpub
         command_string = [
             "cardano-address",
             "address",
             "payment",
             "--network-tag",
-            self.cardano_network,
+            self.CARDANO_NETWORK,
         ]
         rawResult = self.execute_command(command_string, output.stdout)
 
         print("Payment extended address: '%s'" % (rawResult))
         # Delete file root key
-        remove_file(self.path, "/temp_payment.xvk")
+        remove_file(self.KEYS_FILE_PATH, "/temp_payment.xvk")
         return rawResult
 
     def convertPaymentKey(self, payment_signing_key, name):
@@ -1471,7 +1483,7 @@ class Keys(Starter):
             [str]: [payment_skey, payment_vkey, payment_addr]
         """
         # Save temp root_key
-        save_file(self.path, "/temp_payment.xsk", str(payment_signing_key))
+        save_file(self.KEYS_FILE_PATH, "/temp_payment.xsk", str(payment_signing_key))
 
         # Generate extended public account key xpub
         command_string = [
@@ -1480,14 +1492,14 @@ class Keys(Starter):
             "convert-cardano-address-key",
             "--shelley-payment-key",
             "--signing-key-file",
-            self.path + "/temp_payment.xsk",
+            self.KEYS_FILE_PATH + "/temp_payment.xsk",
             "--out-file",
-            self.path + "/" + name + "/" + name + ".payment.skey",
+            self.KEYS_FILE_PATH + "/" + name + "/" + name + ".payment.skey",
         ]
 
         self.execute_command(command_string, None)
 
-        output = self.cat_files(self.path, "/" + name + "/" + name + ".payment.skey")
+        output = self.cat_files(self.KEYS_FILE_PATH, "/" + name + "/" + name + ".payment.skey")
         payment_skey = output.communicate()[0].decode("utf-8")
         payment_skey = json.loads(payment_skey)
 
@@ -1497,9 +1509,9 @@ class Keys(Starter):
             "key",
             "verification-key",
             "--signing-key-file",
-            self.path + "/" + name + "/" + name + ".payment.skey",
+            self.KEYS_FILE_PATH + "/" + name + "/" + name + ".payment.skey",
             "--verification-key-file",
-            self.path + "/" + name + "/" + name + ".payment.evkey",
+            self.KEYS_FILE_PATH + "/" + name + "/" + name + ".payment.evkey",
         ]
         self.execute_command(command_string, None)
 
@@ -1510,13 +1522,13 @@ class Keys(Starter):
             "key",
             "non-extended-key",
             "--extended-verification-key-file",
-            self.path + "/" + name + "/" + name + ".payment.evkey",
+            self.KEYS_FILE_PATH + "/" + name + "/" + name + ".payment.evkey",
             "--verification-key-file",
-            self.path + "/" + name + "/" + name + ".payment.vkey",
+            self.KEYS_FILE_PATH + "/" + name + "/" + name + ".payment.vkey",
         ]
         self.execute_command(command_string, None)
 
-        output = self.cat_files(self.path, "/" + name + "/" + name + ".payment.vkey")
+        output = self.cat_files(self.KEYS_FILE_PATH, "/" + name + "/" + name + ".payment.vkey")
         payment_vkey = output.communicate()[0].decode("utf-8")
         payment_vkey = json.loads(payment_vkey)
 
@@ -1526,9 +1538,9 @@ class Keys(Starter):
             "address",
             "build",
             "--payment-verification-key-file",
-            self.path + "/" + name + "/" + name + ".payment.vkey",
+            self.KEYS_FILE_PATH + "/" + name + "/" + name + ".payment.vkey",
             "--out-file",
-            self.path + "/" + name + "/" + name + ".payment.addr",
+            self.KEYS_FILE_PATH + "/" + name + "/" + name + ".payment.addr",
         ]
         if self.CARDANO_NETWORK == "testnet":
             command_string, index = self.insert_command(
@@ -1540,7 +1552,7 @@ class Keys(Starter):
             )
         self.execute_command(command_string, None)
 
-        output = self.cat_files(self.path, "/" + name + "/" + name + ".payment.addr")
+        output = self.cat_files(self.KEYS_FILE_PATH, "/" + name + "/" + name + ".payment.addr")
         payment_addr = output.communicate()[0].decode("utf-8")
 
         print(
@@ -1548,7 +1560,7 @@ class Keys(Starter):
             % (payment_skey, payment_vkey, payment_addr)
         )
         # Delete files
-        remove_file(self.path, "/temp_payment.xsk")
+        remove_file(self.KEYS_FILE_PATH, "/temp_payment.xsk")
 
         return payment_skey, payment_vkey, payment_addr
 
@@ -1564,7 +1576,7 @@ class Keys(Starter):
             [str]: [stake_skey, stake_vkey, stake_addr]
         """
         # Save temp root_key
-        save_file(self.path, "/temp_stake.xsk", str(stake_signing_key))
+        save_file(self.KEYS_FILE_PATH, "/temp_stake.xsk", str(stake_signing_key))
 
         # Generate extended public account key xpub
         command_string = [
@@ -1573,12 +1585,12 @@ class Keys(Starter):
             "convert-cardano-address-key",
             "--shelley-stake-key",
             "--signing-key-file",
-            self.path + "/temp_stake.xsk",
+            self.KEYS_FILE_PATH + "/temp_stake.xsk",
             "--out-file",
-            self.path + "/" + name + "/" + name + ".stake.skey",
+            self.KEYS_FILE_PATH + "/" + name + "/" + name + ".stake.skey",
         ]
         self.execute_command(command_string, None)
-        output = self.cat_files(self.path, "/" + name + "/" + name + ".stake.skey")
+        output = self.cat_files(self.KEYS_FILE_PATH, "/" + name + "/" + name + ".stake.skey")
         stake_skey = output.communicate()[0].decode("utf-8")
         stake_skey = json.loads(stake_skey)
 
@@ -1588,9 +1600,9 @@ class Keys(Starter):
             "key",
             "verification-key",
             "--signing-key-file",
-            self.path + "/" + name + "/" + name + ".stake.skey",
+            self.KEYS_FILE_PATH + "/" + name + "/" + name + ".stake.skey",
             "--verification-key-file",
-            self.path + "/" + name + "/" + name + ".stake.evkey",
+            self.KEYS_FILE_PATH + "/" + name + "/" + name + ".stake.evkey",
         ]
         self.execute_command(command_string, None)
 
@@ -1601,12 +1613,12 @@ class Keys(Starter):
             "key",
             "non-extended-key",
             "--extended-verification-key-file",
-            self.path + "/" + name + "/" + name + ".stake.evkey",
+            self.KEYS_FILE_PATH + "/" + name + "/" + name + ".stake.evkey",
             "--verification-key-file",
-            self.path + "/" + name + "/" + name + ".stake.vkey",
+            self.KEYS_FILE_PATH + "/" + name + "/" + name + ".stake.vkey",
         ]
         self.execute_command(command_string, None)
-        output = self.cat_files(self.path, "/" + name + "/" + name + ".stake.vkey")
+        output = self.cat_files(self.KEYS_FILE_PATH, "/" + name + "/" + name + ".stake.vkey")
         stake_vkey = output.communicate()[0].decode("utf-8")
         stake_vkey = json.loads(stake_vkey)
 
@@ -1616,9 +1628,9 @@ class Keys(Starter):
             "stake-address",
             "build",
             "--stake-verification-key-file",
-            self.path + "/" + name + "/" + name + ".stake.vkey",
+            self.KEYS_FILE_PATH + "/" + name + "/" + name + ".stake.vkey",
             "--out-file",
-            self.path + "/" + name + "/" + name + ".stake.addr",
+            self.KEYS_FILE_PATH + "/" + name + "/" + name + ".stake.addr",
         ]
         if self.CARDANO_NETWORK == "testnet":
             command_string, index = self.insert_command(
@@ -1629,14 +1641,14 @@ class Keys(Starter):
                 5, 1, command_string, ["--mainnet"]
             )
         self.execute_command(command_string, None)
-        output = self.cat_files(self.path, "/" + name + "/" + name + ".stake.addr")
+        output = self.cat_files(self.KEYS_FILE_PATH, "/" + name + "/" + name + ".stake.addr")
         stake_addr = output.communicate()[0].decode("utf-8")
         print(
             "Stake signing key: '%s' \n Stake verification key: '%s' \n Stake address: '%s"
             % (stake_skey, stake_vkey, stake_addr)
         )
         # Delete file
-        remove_file(self.path, "/temp_stake.xsk")
+        remove_file(self.KEYS_FILE_PATH, "/temp_stake.xsk")
 
         # output.stdout.close()
 
@@ -1658,11 +1670,11 @@ class Keys(Starter):
             "address",
             "build",
             "--payment-verification-key-file",
-            self.path + "/" + name + "/" + name + ".payment.vkey",
+            self.KEYS_FILE_PATH + "/" + name + "/" + name + ".payment.vkey",
             "--stake-verification-key-file",
-            self.path + "/" + name + "/" + name + ".stake.vkey",
+            self.KEYS_FILE_PATH + "/" + name + "/" + name + ".stake.vkey",
             "--out-file",
-            self.path + "/" + name + "/" + name + ".base.addr",
+            self.KEYS_FILE_PATH + "/" + name + "/" + name + ".base.addr",
         ]
         if self.CARDANO_NETWORK == "testnet":
             command_string, index = self.insert_command(
@@ -1673,16 +1685,16 @@ class Keys(Starter):
                 7, 1, command_string, ["--mainnet"]
             )
         self.execute_command(command_string, None)
-        output = self.cat_files(self.path, "/" + name + "/" + name + ".base.addr")
+        output = self.cat_files(self.KEYS_FILE_PATH, "/" + name + "/" + name + ".base.addr")
         base_addr = output.communicate()[0].decode("utf-8")
 
-        remove_file(self.path, "/temp_payment.vkey")
-        remove_file(self.path, "/temp_stake.vkey")
+        remove_file(self.KEYS_FILE_PATH, "/temp_payment.vkey")
+        remove_file(self.KEYS_FILE_PATH, "/temp_stake.vkey")
         print("Base address: '%s'" % (base_addr))
         return base_addr
 
     def keyHashing(self, name):
-        keys_file_path = self.path + "/" + name
+        keys_file_path = self.KEYS_FILE_PATH + "/" + name
         # Build hash from key
         command_string = [
             self.CARDANO_CLI_PATH,
@@ -1709,8 +1721,8 @@ class Keys(Starter):
             size ([int]): [phrase extension: 24, 15, etc]
             save_flag ([bool]): [True if saved locally, False to only print results in console]
         """
-        if not os.path.exists(self.path + "/" + name):
-            os.makedirs(self.path + "/" + name)
+        if not os.path.exists(self.KEYS_FILE_PATH + "/" + name):
+            os.makedirs(self.KEYS_FILE_PATH + "/" + name)
         # size = size
         if isinstance(size, int):
             nmemonic = self.generate_mnemonic(size)
@@ -1743,12 +1755,12 @@ class Keys(Starter):
         hash_verification_key = self.keyHashing(name)
 
         # Building the paths
-        payment_skey_path = self.path + "/" + name + "/" + name + ".payment.skey"
-        payment_vkey_path = self.path + "/" + name + "/" + name + ".payment.vkey"
-        payment_addr_path = self.path + "/" + name + "/" + name + ".payment.addr"
-        stake_skey_path = self.path + "/" + name + "/" + name + ".stake.skey"
-        stake_vkey_path = self.path + "/" + name + "/" + name + ".stake.vkey"
-        stake_addr_path = self.path + "/" + name + "/" + name + ".stake.addr"
+        payment_skey_path = self.KEYS_FILE_PATH + "/" + name + "/" + name + ".payment.skey"
+        payment_vkey_path = self.KEYS_FILE_PATH + "/" + name + "/" + name + ".payment.vkey"
+        payment_addr_path = self.KEYS_FILE_PATH + "/" + name + "/" + name + ".payment.addr"
+        stake_skey_path = self.KEYS_FILE_PATH + "/" + name + "/" + name + ".stake.skey"
+        stake_vkey_path = self.KEYS_FILE_PATH + "/" + name + "/" + name + ".stake.vkey"
+        stake_addr_path = self.KEYS_FILE_PATH + "/" + name + "/" + name + ".stake.addr"
 
         # Creating the dict
         keys = {
@@ -1774,22 +1786,22 @@ class Keys(Starter):
             "hash_verification_key": hash_verification_key,
         }
         if save_flag:
-            with open(self.path + "/" + name + "/" + name + ".json", "w") as file:
+            with open(self.KEYS_FILE_PATH + "/" + name + "/" + name + ".json", "w") as file:
                 json.dump(keys, file, indent=4, ensure_ascii=False)
 
             print("##################################")
             print(
                 "Find all the keys and address details in: %s"
-                % (self.path + "/" + name + "/" + name + ".json")
+                % (self.KEYS_FILE_PATH + "/" + name + "/" + name + ".json")
             )
             print("##################################")
         else:
-            remove_folder(self.path + "/" + name)
+            remove_folder(self.KEYS_FILE_PATH + "/" + name)
             self.LOGGER.debug(f"Keys info were not saved locally")
         return keys
 
     def generateCardanoKeys(self, name):
-        keys_file_path = self.path + "/" + name
+        keys_file_path = self.KEYS_FILE_PATH + "/" + name
         create_folder(keys_file_path)
         # Build Cardano keys with Cardano CLI
         command_string = [
@@ -1823,7 +1835,7 @@ class Keys(Starter):
         return rawResult
 
     def create_address_script(self, script_name):
-        keys_file_path = self.path + "/" + script_name
+        keys_file_path = self.KEYS_FILE_PATH + "/" + script_name
         # Build script addresses
         command_string = [
             self.CARDANO_CLI_PATH,

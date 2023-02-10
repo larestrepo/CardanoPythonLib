@@ -4,6 +4,7 @@ import sys
 import unittest
 import uuid
 import time
+from dataclasses import dataclass
 
 from cardanopythonlib import base
 from cardanopythonlib.path_utils import remove_file
@@ -14,8 +15,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "cardanopythonlib"
 class TestLibrary(unittest.TestCase):
     def setUp(self):
         self.config_path = "cardanopythonlib/config/cardano_config.ini"
-        self.starter = base.Starter(self.config_path)
-        self.node = base.Node(self.config_path)
+        self.starter = base.Starter()
+        self.node = base.Node()
         self.wallet_name = "test_wallet"
         self.address_origin = (
             "addr_test1vp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qcul3azr"
@@ -152,7 +153,7 @@ class TestLibrary(unittest.TestCase):
             txHash_in == (['496602485616c1b636461762f1e41084f863a51847ecc9fbc30a504d28b8917b#0', '0d085c60b8db224e43608886250d524ceee17f4b4b1091aec879e40135975644#0'], 1002000000),
             "Wrong selection in assert 4. Send lovelace"
         )
-        txHash_in = self.node.utxo_selection(mock_transactions, 2000000, action="mint")# Mint token. It should take the utxo with enough balance and without tokens
+        txHash_in = self.node.utxo_selection(mock_transactions, 2000000)# Mint token. It should take the utxo with enough balance and without tokens
         self.assertTrue(
             txHash_in == (['496602485616c1b636461762f1e41084f863a51847ecc9fbc30a504d28b8917b#0'], 1000000000),
             "Wrong selection in assert 5. Mint token. It should take the utxo with enough balance and without tokens"
@@ -167,7 +168,7 @@ class TestLibrary(unittest.TestCase):
             txHash_in == (['c2e7b4319abc56ba57ba1c044a36aac3613b71c1131ab30f86e16ba0ffba9c12#0'], 2000000),
             "Wrong selection in assert 6. If coin name specified with default action it means that the token is to be sent"
         )
-        txHash_in = self.node.utxo_selection(mock_transactions, 1, coin_name="3547253f769b35cd318e062f7ade5b4ceb43462beb3f12ac18ce536b.4d7954657374454d47", action="burn") # Burn if coin name specified with action = "Burn"
+        txHash_in = self.node.utxo_selection(mock_transactions, 1, coin_name="3547253f769b35cd318e062f7ade5b4ceb43462beb3f12ac18ce536b.4d7954657374454d47") # Burn if coin name specified with action = "Burn"
         self.assertTrue(
             txHash_in == (['c2e7b4319abc56ba57ba1c044a36aac3613b71c1131ab30f86e16ba0ffba9c12#0'], 2000000),
             "Wrong selection in assert 6. Burn if coin name specified with action = Burn"
@@ -394,6 +395,40 @@ class TestLibrary(unittest.TestCase):
             "Failed to build the transaction",
         )
 
+    def test_build_tx_destin_tokens(self):
+        tx_file_path = self.starter.TRANSACTION_PATH_FILE
+        remove_file(tx_file_path, "/tx.draft")
+        params = {
+            "address_origin": self.address_origin,
+            "address_destin":  [
+            {
+                "address": self.address_origin,
+                # "amount": 3000000,
+                "tokens": [],
+            }
+        ],
+            # "change_address": self.address_origin,
+            # "metadata": self.metadata,
+            # "mint": None,
+            # "script_path": None,
+            # "witness": 1,
+        }
+        response = self.node.build_tx_components(params)
+        file_exists = os.path.exists(tx_file_path + "/tx.draft")
+
+        remove_file(tx_file_path, "/tx.draft")
+        remove_file(tx_file_path, "/tx_metadata")
+
+        self.assertTrue(
+            file_exists,
+            f"Verify the creation of the transaction draft file in {tx_file_path}",
+        )
+        self.assertIn(
+            "Estimated transaction fee: Lovelace",
+            response,
+            "Failed to build the transaction",
+        )
+
     def test_build_tx_inline(self):
         tx_file_path = self.starter.TRANSACTION_PATH_FILE
         remove_file(tx_file_path, "/tx.draft")
@@ -448,7 +483,7 @@ class TestLibrary(unittest.TestCase):
         tx_file_path = self.starter.TRANSACTION_PATH_FILE
         params = {
             "address_origin": self.address_origin,
-            "address_destin": self.address_destin_no_tokens,
+            # "address_destin": self.address_destin_no_tokens,
             "mint": mint,
         }
         response = self.node.build_tx_components(params)
@@ -471,16 +506,16 @@ class TestLibrary(unittest.TestCase):
 
 
     def test_just_burn(self):
+        slot = 9421016
         type = "all"
         hashes = ["75eacb8808f937e42cde4312d2d4bb42bd1cbfca379bbe90a3ec0383"]
         # hashes = ["c338509bed524537ffbd8412678339b302d5a57c4dcf666ee5f15c8c"]
-        slot = self.node.query_tip_exec()["slot"] + 20000
+        # slot = self.node.query_tip_exec()["slot"] + 20000
         parameters = {
-            "name": self.script_name,
             "type": type,
             "hashes": hashes,
-            # "type_time": self.type_time,
-            # "slot": slot,
+            "type_time": self.type_time,
+            "slot": slot,
             "purpose": self.purpose,
         }
         multisig_script, policyID = self.node.create_simple_script(parameters)
@@ -492,15 +527,12 @@ class TestLibrary(unittest.TestCase):
 
         mint = {
             "policyID": policyID,
-            "policy_path": script_file_path + "/" + self.script_name + ".script",
-            # "validity_interval": {"type": type_time, "slot": slot},
             "tokens": [
-                {"name": "MyTestEMG", "amount": 1, "action": "burn"},
+                {"name": "Random", "amount": 541, "action": "burn"},
             ],
         }
         params = {
-            "address_origin": "addr_test1vp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qcul3azr",
-            # "address_origin": "addr_test1vrpns5yma4fy2dllhkzpyeur8xes94d903xu7enwuhc4erqecraxf",
+            "address_origin": "addr_test1qp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qc0wx9lg9h8x72hctqg34gy2eygnlrf7nyf343w34r67hjskugtxl",
             "mint": mint,
         }
         response = self.node.build_tx_components(params)
@@ -521,13 +553,16 @@ class TestLibrary(unittest.TestCase):
         remove_file(script_file_path, "/" + self.script_name + ".script")
         remove_file(script_file_path, "/" + self.script_name + ".policyid")
         remove_file(tx_file_path, "/tx_metadata")
-        remove_file(tx_file_path, "/tx.draft")
+        # remove_file(tx_file_path, "/tx.draft")
+
+        response = self.node.sign_transaction([self.wallet_name])
+        response = self.node.submit_transaction()
 
 class TestLibraryOnline(unittest.TestCase):
     def setUp(self):
         self.config_path = "cardanopythonlib/config/cardano_config.ini"
-        self.starter = base.Starter(self.config_path)
-        self.node = base.Node(self.config_path)
+        self.starter = base.Starter()
+        self.node = base.Node()
         self.wallet_name = "test_wallet"
         self.address_origin = (
             "addr_test1vp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qcul3azr"
@@ -569,7 +604,7 @@ class TestLibraryOnline(unittest.TestCase):
         mint = {
             "policyID": policyID,
             "tokens": [
-                {"name": "Random", "amount": 321, "action": "mint"},
+                {"name": "Random", "amount": 541, "action": "mint"},
             ],
         }
         tx_file_path = self.starter.TRANSACTION_PATH_FILE
@@ -630,7 +665,7 @@ class TestLibraryOnline(unittest.TestCase):
         mint = {
             "policyID": policyID,
             "tokens": [
-                {"name": "Random", "amount": 321, "action": "burn"},
+                {"name": "Random", "amount": 541, "action": "burn"},
             ],
         }
 
