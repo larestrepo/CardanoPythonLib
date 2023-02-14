@@ -404,7 +404,13 @@ class TestLibrary(unittest.TestCase):
             {
                 "address": self.address_origin,
                 # "amount": 3000000,
-                "tokens": [],
+                "tokens": [
+                    {
+                        "name": "MyTestEMG",
+                        "amount": 1,
+                        "policyID": "3547253f769b35cd318e062f7ade5b4ceb43462beb3f12ac18ce536b"
+                    }
+                ],
             }
         ],
             # "change_address": self.address_origin,
@@ -459,6 +465,19 @@ class TestLibrary(unittest.TestCase):
             "Failed to build the transaction",
         )
 
+        ######################################
+        # 
+        params = {
+            "address_origin": self.address_origin,
+            "address_destin": self.address_destin_no_tokens,
+            "change_address": self.address_origin,
+            "metadata": self.metadata,
+            # "mint": None,
+            # "script_path": None,
+            # "witness": 1,
+            "inline_datum": self.inline_datum,
+        }
+
     def test_just_mint(self):
 
         type = "all"
@@ -475,9 +494,9 @@ class TestLibrary(unittest.TestCase):
         script_file_path = script_file_path = self.starter.MINT_FOLDER
 
         mint = {
-            "policyID": policyID,
+            "action": "mint",
             "tokens": [
-                {"name": "Random", "amount": 321, "action": "mint"},
+                {"name": "Random", "amount": 321, "policyID": policyID},
             ],
         }
         tx_file_path = self.starter.TRANSACTION_PATH_FILE
@@ -506,7 +525,7 @@ class TestLibrary(unittest.TestCase):
 
 
     def test_just_burn(self):
-        slot = 9421016
+        slot = 9764754
         type = "all"
         hashes = ["75eacb8808f937e42cde4312d2d4bb42bd1cbfca379bbe90a3ec0383"]
         # hashes = ["c338509bed524537ffbd8412678339b302d5a57c4dcf666ee5f15c8c"]
@@ -526,13 +545,13 @@ class TestLibrary(unittest.TestCase):
             script_file_path = self.starter.MULTISIG_FOLDER
 
         mint = {
-            "policyID": policyID,
+            "action": "burn",
             "tokens": [
-                {"name": "Random", "amount": 541, "action": "burn"},
+                {"name": "Random", "amount": 758, "policyID": policyID},
             ],
         }
         params = {
-            "address_origin": "addr_test1qp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qc0wx9lg9h8x72hctqg34gy2eygnlrf7nyf343w34r67hjskugtxl",
+            "address_origin": "addr_test1vp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qcul3azr",
             "mint": mint,
         }
         response = self.node.build_tx_components(params)
@@ -602,15 +621,15 @@ class TestLibraryOnline(unittest.TestCase):
         script_file_path = script_file_path = self.starter.MINT_FOLDER
 
         mint = {
-            "policyID": policyID,
+            "action": "mint",
             "tokens": [
-                {"name": "Random", "amount": 541, "action": "mint"},
+                {"name": "Random", "amount": 758, "policyID": policyID},
             ],
         }
         tx_file_path = self.starter.TRANSACTION_PATH_FILE
         params = {
             "address_origin": self.address_origin,
-            "address_destin": self.address_destin_no_tokens,
+            # "address_destin": self.address_destin_no_tokens,
             "mint": mint,
         }
         response = self.node.build_tx_components(params)
@@ -663,14 +682,14 @@ class TestLibraryOnline(unittest.TestCase):
 ##################################
 
         mint = {
-            "policyID": policyID,
+            "action": "burn",
             "tokens": [
-                {"name": "Random", "amount": 541, "action": "burn"},
+                {"name": "Random", "amount": 758, "policyID": policyID},
             ],
         }
 
         params = {
-                    "address_origin": "addr_test1qp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qc0wx9lg9h8x72hctqg34gy2eygnlrf7nyf343w34r67hjskugtxl",
+                    "address_origin": "addr_test1vp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qcul3azr",
                     "mint": mint,
                 }
         response = self.node.build_tx_components(params)

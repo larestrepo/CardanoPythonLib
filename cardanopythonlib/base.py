@@ -12,7 +12,7 @@ import sys
 from base64 import b16encode
 from itertools import chain, groupby
 from operator import itemgetter
-from typing import Tuple, Union, List, Literal
+from typing import Tuple, Union, List, Any
 import uuid
 from dataclasses import dataclass, field
 
@@ -161,6 +161,34 @@ class Starter:
 
         return minUTxOValue
 
+    def query_protocol(self, save_flag: bool = False) -> dict:
+        """Execute query protocol parameters.
+
+        Args:
+            saving_path (str, optional): path where to save the protocol json
+            file. Defaults to ''.
+        """
+        print("Executing query protocol parameters")
+        protocol_file = self.TRANSACTION_PATH_FILE + "/protocol.json"
+        command_string = [self.CARDANO_CLI_PATH, "query", "protocol-parameters"]
+        if self.CARDANO_NETWORK == "testnet":
+            command_string, index = self.insert_command(
+                3, 1, command_string, ["--testnet-magic", self.CARDANO_NETWORK_MAGIC]
+            )
+        else:
+            command_string, index = self.insert_command(
+                3, 1, command_string, ["--mainnet"]
+            )
+
+        rawResult = self.execute_command(command_string, None)
+        rawResult = json.loads(rawResult)
+        if save_flag:
+            with open(protocol_file, "w") as file:
+                json.dump(rawResult, file, indent=4, ensure_ascii=False)
+                self.LOGGER.info(f"Protocol parameters file stored in {protocol_file}")
+        return rawResult
+
+
     def min_required_utxo(
         self, tx_out_address: str, tx_out_tokens: str = "", *reference_data
     ) -> int:
@@ -181,12 +209,11 @@ class Starter:
         """
         print("Executing min_required_utxo calculation")
         min_utxo = 0
+        if not os.path.exists(self.TRANSACTION_PATH_FILE + "protocol.json"):
+            self.query_protocol(True)
         while True:
             previous_min_utxo = min_utxo
             address = f"{tx_out_address}+{str(min_utxo)}{tx_out_tokens}"
-            # if tx_out_tokens !="":
-            # else:
-            #     address = f"{tx_out_address}+{str(0)}"
             command_string = [
                 self.CARDANO_CLI_PATH,
                 "transaction",
@@ -228,211 +255,6 @@ class Starter:
                 index, step, command_string, ["--mainnet"]
             )
         return command_string
-
-@dataclass()
-class Mint(Starter):
-
-    mint: Union[dict, None] = field(init=True, default=None)
-    # tokens: dict
-    # policy_path: str = field(init=False, default="")
-    # scripts: dict = field(init=False)
-    
-    def __post_init__(self):
-        if self.mint:
-            self.tokens = self.mint["tokens"]
-            self.policyid = self.mint["policyID"]
-            self.policy_path = self.MINT_FOLDER + '/' + self.policyid + '.script'
-            with open (self.policy_path, 'r') as file:
-                script_content = json.load(file)
-            self.scripts = script_content.get("scripts")
-        else:
-            self.tokens = {}
-            self.policyid = ""
-            self.policy_path = ""
-            self.scripts = {}
-            
-
-    def coin_name(self) -> str:
-        mint_name = "lovelace"
-        if self.policy_path:
-            for token in self.tokens:
-                mint_name = token["name"].encode("utf-8")
-                mint_name = b16encode(mint_name).decode("utf-8").lower()
-                mint_name = str(self.policyid + "." + mint_name)
-        
-        return mint_name
-    
-    def mint_quantity(self) -> int:  # type: ignore
-        for token in self.tokens:
-            return int(token["amount"])
-
-    def mint_string(self) -> Tuple[list[str], str, str]:
-        # mint_quantity_array = []
-        mint_output_string = ''
-        mint_array = []
-        action = "mint"
-        if self.tokens:
-            for token in self.tokens:
-                action = token["action"]
-                mint_name = self.coin_name()
-                mint_quantity = self.mint_quantity()
-                # mint_quantity = token["amount"] if action == "mint"  else (-1)*token["amount"]
-                # mint_quantity_array.append(mint_quantity)
-                mint_output_string += (str((-1)*mint_quantity) + " "+ mint_name) if action == "burn" else (str(mint_quantity) + " "+ mint_name+ "+")
-            if mint_output_string[-1] == '+':
-                mint_output_string = mint_output_string[:-1]
-            mint_string = "--mint="
-            mint_string = mint_string + mint_output_string
-            mint_output_string = "" if action == "burn" else "+" + mint_output_string
-            mint_array.append(mint_string)
-            mint_array.append("--mint-script-file")
-            mint_array.append(self.policy_path)
-        return mint_array, mint_output_string, action
-    
-    def ttl(self) -> Tuple[str, str]:
-        type_validity = ""
-        slot_validity = ""
-        for script in self.scripts:
-            if script["type"] != "sig":
-                type_validity = script["type"]
-                slot_validity = script["slot"]
-        return type_validity, slot_validity
-
-    def min_utxo(self, tx_out_tokens: str, source_address: str="addr_test1vp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qcul3azr") -> int:
-        return self.min_required_utxo(source_address, tx_out_tokens)
-
-@dataclass()
-class TxOutput(Starter):
-    pass
-
-
-@dataclass()
-class Node(Starter):
-    """
-    Class using primarly Cardano CLI commands
-    """
-
-    # def __init__(self, config_path=CARDANO_CONFIGS):
-    #     super().__init__(config_path)
-
-    def id_to_address(self, wallet_name: str) -> str:
-        """Get payment address stored locally from wallet_name; if address is
-        provided, address is returned
-
-        Args:
-            wallet_name (string): id wallet generated by cardano wallet API or
-            payment address.
-
-        Returns:
-            string: payment address associated to wallet_name
-        """
-        if not wallet_name.startswith("addr" or "DdzFF"):
-            if os.path.exists(self.KEYS_FILE_PATH + "/" + wallet_name):
-                with open(
-                    self.KEYS_FILE_PATH
-                    + "/"
-                    + wallet_name
-                    + "/"
-                    + wallet_name
-                    + ".payment.addr",
-                    "r",
-                ) as file:
-                    address = file.readlines(1)[0]
-            else:
-                address = ""
-        else:
-            address = wallet_name
-        return address
-
-    def get_txid_body(self) -> str:
-
-        """ Get the transaction hash from the tx.draft file
-        No need of paramaters as it assumes that the tx.draft is located at
-        .priv/transactions
-
-        :return str: TxOutRefId#TxOutRefIdx
-        """
-
-        print("Executing get transaction ID from Tx.draft file")
-        command_string = [
-            self.CARDANO_CLI_PATH,
-            "transaction",
-            "txid",
-            "--tx-body-file",
-            self.TRANSACTION_PATH_FILE + "/tx.draft",
-        ]
-        rawResult = self.execute_command(command_string, None)
-        return rawResult
-
-    def get_tx_info(
-        self,
-        txOutRefId: str,
-        txOutRefIdx: int = 0,
-    ) -> str:
-
-        print("Exploring the transaction info")
-        command_string = [
-            self.CARDANO_CLI_PATH,
-            "query",
-            "utxo",
-            "--tx-in",
-            txOutRefId + "#" + str(txOutRefIdx),
-            "--out-file",
-            self.TRANSACTION_PATH_FILE + "/tx_info.json",
-        ]
-        command_string = self.insert_network(command_string, 5, 1)
-        rawResult = self.execute_command(command_string, None)
-        return rawResult
-
-    def query_protocol(self, save_flag: bool = False) -> dict:
-        """Execute query protocol parameters.
-
-        Args:
-            saving_path (str, optional): path where to save the protocol json
-            file. Defaults to ''.
-        """
-        print("Executing query protocol parameters")
-        protocol_file = self.TRANSACTION_PATH_FILE + "/protocol.json"
-        command_string = [self.CARDANO_CLI_PATH, "query", "protocol-parameters"]
-        if self.CARDANO_NETWORK == "testnet":
-            command_string, index = self.insert_command(
-                3, 1, command_string, ["--testnet-magic", self.CARDANO_NETWORK_MAGIC]
-            )
-        else:
-            command_string, index = self.insert_command(
-                3, 1, command_string, ["--mainnet"]
-            )
-
-        rawResult = self.execute_command(command_string, None)
-        rawResult = json.loads(rawResult)
-        if save_flag:
-            with open(protocol_file, "w") as file:
-                json.dump(rawResult, file, indent=4, ensure_ascii=False)
-                self.LOGGER.info(f"Protocol parameters file stored in {protocol_file}")
-        return rawResult
-
-    def query_tip_exec(self):
-        """Execute query tip.
-
-        Returns:
-            _type_: json with latest epoch, hash, slot, block, era,
-                syncProgress
-        """
-        print("Executing Query Tip")
-        command_string = [self.CARDANO_CLI_PATH, "query", "tip"]
-        if self.CARDANO_NETWORK == "testnet":
-            command_string, index = self.insert_command(
-                3, 1, command_string, ["--testnet-magic", self.CARDANO_NETWORK_MAGIC]
-            )
-        else:
-            command_string, index = self.insert_command(
-                3, 1, command_string, ["--mainnet"]
-            )
-
-        rawResult = self.execute_command(command_string, None)
-        rawResult = json.loads(rawResult)
-        self.LOGGER.info(rawResult)
-        return rawResult
 
     def get_transactions(self, wallet_id: str) -> list[dict]:
         """Get the list of transactions from the given addresses.
@@ -481,6 +303,35 @@ class Node(Starter):
         self.LOGGER.debug(token_transactions)
         return token_transactions
 
+    def id_to_address(self, wallet_name: str) -> str:
+        """Get payment address stored locally from wallet_name; if address is
+        provided, address is returned
+
+        Args:
+            wallet_name (string): id wallet generated by cardano wallet API or
+            payment address.
+
+        Returns:
+            string: payment address associated to wallet_name
+        """
+        if not wallet_name.startswith("addr" or "DdzFF"):
+            if os.path.exists(self.KEYS_FILE_PATH + "/" + wallet_name):
+                with open(
+                    self.KEYS_FILE_PATH
+                    + "/"
+                    + wallet_name
+                    + "/"
+                    + wallet_name
+                    + ".payment.addr",
+                    "r",
+                ) as file:
+                    address = file.readlines(1)[0]
+            else:
+                address = ""
+        else:
+            address = wallet_name
+        return address
+
     def get_balance(self, wallet_id: str) -> dict:
         """Get the balance in dictionary format at the specified wallet
             address or from address base if wallet id is provided
@@ -526,6 +377,440 @@ class Node(Starter):
         for k, v in balance_dict.items():
             self.LOGGER.info(f"{k} is : {v}")
         return balance_dict
+
+    def string_encode(self, string: str) -> str:
+        return b16encode(string.encode("utf-8")).decode("utf-8").lower()
+
+
+@dataclass()
+class Mint(Starter):
+
+    mint: Union[dict, None] = field(init=True, default=None)
+    # tokens: dict
+    # policy_path: str = field(init=False, default="")
+    # scripts: dict = field(init=False)
+    
+    def __post_init__(self):
+        if self.mint:
+            self.tokens = self.mint["tokens"]
+            self.action = self.mint["action"]
+            # self.policyid = self.mint["policyID"]
+            # self.policy_path = self.MINT_FOLDER + '/' + self.policyid + '.script'
+            # with open (self.policy_path, 'r') as file:
+            #     script_content = json.load(file)
+            # self.scripts = script_content.get("scripts")
+        else:
+            self.tokens = {}
+            self.action = "send"
+            # self.policyid = ""
+            # self.policy_path = ""
+            # self.scripts = {}
+            
+    
+    def quantity(self, token: dict) -> int:
+        return int(token["amount"])
+
+    def policyid(self, token: dict) -> str: # type: ignore
+        policyid = ""
+        for token in self.tokens:
+            policyid = token["policyID"]
+        return str(policyid)
+
+    def coin_name(self, token: dict) -> str:
+        mint_name = "lovelace"
+        for token in self.tokens:
+            mint_name = token["name"].encode("utf-8")
+            mint_name = b16encode(mint_name).decode("utf-8").lower()
+            policyid = self.policyid(token)
+            mint_name = str(policyid + "." + mint_name)
+        
+        return mint_name
+        
+    def script(self, policyid: str) -> Union[dict, None]:
+        script = None
+        if policyid != "":
+            policy_path = self.MINT_FOLDER + '/' + policyid + '.script'
+            with open (policy_path, 'r') as file:
+                script_content = json.load(file)
+            script = script_content.get("scripts")
+        return script
+
+    def string(self) -> Tuple[list[str], str, str]:
+        # mint_quantity_array = []
+        mint_output_string = ''
+        mint_array = []
+        policy_path = ""
+        if self.tokens:
+            for token in self.tokens:
+                mint_name = self.coin_name(token)
+                mint_quantity = self.quantity(token)
+                mint_policyid = self.policyid(token)
+                policy_path = self.MINT_FOLDER + '/' + mint_policyid + '.script'
+                mint_output_string += (str((-1)*mint_quantity) + " "+ mint_name) if self.action == "burn" else (str(mint_quantity) + " "+ mint_name+ "+")
+            if mint_output_string[-1] == '+':
+                mint_output_string = mint_output_string[:-1]
+            mint_string = "--mint="
+            mint_string = mint_string + mint_output_string
+            mint_output_string = "" if self.action == "burn" else "+" + mint_output_string
+            mint_array.append(mint_string)
+            mint_array.append("--mint-script-file")
+            mint_array.append(policy_path)
+            # mint_array.append(self.policyid())
+        return mint_array, mint_output_string, self.action
+    
+    def ttl(self) -> Tuple[str, str]:
+        type_validity = ""
+        slot_validity = ""
+        for token in self.tokens:
+            policyid = self.policyid(token)
+            script = self.script(policyid)
+            if script is not None:
+                for items in script:
+                    if items["type"] != "sig":
+                        type_validity = items["type"]
+                        slot_validity = items["slot"]
+        return type_validity, slot_validity
+
+    def min_utxo(self, tx_out_tokens: str, source_address: str="addr_test1vp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qcul3azr") -> int:
+        min_lovelece_utxo = 0
+        if tx_out_tokens != "":
+            min_lovelece_utxo = self.min_required_utxo(source_address, tx_out_tokens)
+        return min_lovelece_utxo
+
+    # def mint_add(self, address: str, quantity: int, assets: str) -> list[str]:
+    #     output_string = []
+    #     output_string.append("--tx-out")
+    #     output_string.append(address + "+"+ str(quantity) + assets)
+
+    #     return output_string
+
+@dataclass()
+class Source(Starter):
+    asource: str = field(init=True)
+    deplete: bool = field(init=False, default=False)
+    minCost: int = field(init=False, default=1000000)
+    
+    TokenList = List[tuple[str, int, str]]
+
+    def __post_init__(self):
+        if self.asource != "":
+            self.asource = self.id_to_address(self.asource)
+            self.tLovelace = self.get_balance(self.asource).get("lovelace", 0)
+            self.transactions = self.get_transactions(self.asource)
+            self.utxo_lovelace = list(filter(lambda utxo: len(utxo["amounts"]) == 1, self.transactions))
+            self.utxo_tokens = list(filter(lambda utxo: len(utxo["amounts"]) != 1, self.transactions))
+            self.change_min_utxo = self.min_required_utxo(self.asource)
+        else:
+            self.utxo_lovelace = []
+            self.utxo_tokens = []
+
+    def selection_utxo(self, utxo_list: list, quantity: int, coin_name: str) -> Tuple[list[str], int, bool]:
+        TxHash = []
+        TxHash_lower = []
+        TxHash_greater = []
+        amount_equal = 0
+        amount_lower = []
+        amount_greater = []
+        utxo_found = False
+        for utxo in utxo_list:
+            for amount in utxo["amounts"]:
+                if amount.get("token") == coin_name:
+                    if coin_name != "lovelace":
+                        self.minCost = 0
+                    if self.deplete:
+                        # TxHash.append('--tx-in')
+                        TxHash.append(utxo["hash"] + "#" + utxo.get("id"))
+                        amount_equal += int(amount.get("amount"))
+                        utxo_found = True
+                        break
+                    if int(amount.get("amount")) == quantity + self.minCost:
+                        # TxHash.append('--tx-in')
+                        TxHash.append(utxo["hash"] + "#" + utxo.get("id"))
+                        amount_equal =sum([int(amount["amount"]) for amount in utxo["amounts"] if amount["token"] == "lovelace"])
+                        # amount_equal = int(amount.get("amount"))
+                        utxo_found = True
+                        break
+                    elif int(amount.get("amount")) < quantity + self.minCost:
+                        TxHash_lower.append(utxo["hash"] + "#" + utxo.get("id"))
+                        amount_lower.append(int(amount.get("amount")))
+                    elif int(amount.get("amount")) > quantity + self.minCost:
+                        TxHash_greater.append(
+                            utxo["hash"] + "#" + utxo.get("id")
+                        )
+                        amount_greater.append(int(amount.get("amount")))
+            else:
+                continue
+            break
+
+        if not utxo_found: # If more than 1 utxo 
+            if sum(amount_lower) == quantity + self.minCost:
+                TxHash = TxHash_lower
+                amount_equal = sum(amount_lower)
+            elif sum(amount_lower) < quantity + self.minCost:
+                if amount_greater == []:
+                    TxHash = []
+                    amount_equal = 0
+                amount_equal = min(amount_greater)
+                index = [
+                    i for i, j in enumerate(amount_greater) if j == amount_equal
+                ][0]
+                TxHash.append(TxHash_greater[index])
+            elif sum(amount_lower) > quantity +  self.minCost and TxHash_greater == []:
+                # Creating descending tuple list (utxo, q) to fill te amount required
+                combined = sorted(list(zip(TxHash_lower, amount_lower)), key=lambda utxo: utxo[1], reverse=True)
+                for i, (utxo, q) in enumerate(combined):
+                    amount_equal += q
+                    TxHash.append(utxo)
+                    if amount_equal >= quantity + self.minCost:
+                        break
+            else:
+                utxo_array = []
+                amount_array = []
+                for _ in range(999):
+                    index_random = random.randint(0, len(self.asource) - 1)
+                    utxo = self.transactions.pop(index_random)
+                    utxo_array.append(utxo["hash"] + "#" + utxo.get("id"))
+                    for amount in utxo["amounts"]:
+                        if amount.get("token") == coin_name:
+                            amount_array.append(int(amount.get("amount")))
+                    if sum(amount_array) >= quantity + self.minCost:
+                        amount_equal = sum(amount_array)
+                        break
+                TxHash = utxo_array
+
+        return TxHash, amount_equal, utxo_found
+
+    def asource_utxo(self, qLovelace: int, action: str, qToken: TokenList=[]) -> Tuple[list[str], int]:
+        TxHash = []
+        amount_equal = 0
+        TxHash1 = 1
+        if self.asource:
+            if action == "mint":
+                qToken = []
+            if qToken != []:
+                coin_name = ""
+                for n, q, p in qToken:
+                    coin_name = p + "." + self.string_encode(n)
+                # map(lambda x: x.split("+"), list(filter(lambda item: item != "--tx-out", qToken)))
+                    TxHash, amount_equal, utxo_found = self.selection_utxo(self.utxo_tokens, q, coin_name=coin_name)
+                    if utxo_found and ((qLovelace - amount_equal) <= self.change_min_utxo + 500000):
+                        TxHash.extend(self.selection_utxo(self.utxo_lovelace, self.change_min_utxo, coin_name="lovelace")[0])
+            else:
+                TxHash, amount_equal, utxo_found = self.selection_utxo(self.utxo_lovelace, qLovelace, coin_name="lovelace")
+            # if coin_name != "lovelace":
+                # TxHash, amount_equal, utxo_found = self.selection_utxo(self.utxo_with_tokens, qLovelace, coin_name=coin_name)
+                # if utxo_found and ((amount_equal - self.minCost) < 500000):
+                #     quantity = self.minCost
+                #     coin_name = "lovelace"
+                #     TxHash, amount_equal, utxo_found = self.selection_utxo(self.utxo_only_lovelace, quantity, coin_name=coin_name)
+
+            # else:
+
+                
+            
+        return TxHash, amount_equal
+
+    def asource_add(self, TxHash: list[str]) -> list[str]:
+        TxHash = list(set(TxHash))
+        tx_in = len(TxHash) * ["--tx-in"]
+        return list(chain(*zip(tx_in, TxHash)))
+
+    def check(self) -> bool:
+        if self.tLovelace != 0:
+            return True
+        else:
+            return False
+
+@dataclass()
+class Destination(Starter):
+    adestins: Union[list[dict], None] = field(init=True, default=None)
+
+    TokenList = List[tuple[str, int, str]]
+    def __post_init__(self):
+        if self.adestins:
+            self.adestins = self.adestins
+            # for adestin in self.adestins:
+            #     self.address = adestin["address"]
+            #     self.amount = adestin.get("amount", 0)
+            #     self.tokens = adestin.get("tokens", None)
+        else:
+            self.adestins = []
+            # self.address = ""
+            # self.amount = 0
+            # self.tokens = None
+    def adestin_tokenList(self) -> TokenList:
+        token_list = []
+        if self.adestins:
+            for adestin in self.adestins:
+                tokens = adestin.get("tokens", None)
+                # if action == "mint":
+                #     tokens = None
+                if tokens is not None:
+                    for item in tokens:
+                        token_list.append(tuple(item.values()))
+
+        return token_list
+    
+    def adestin_tokens(self, tokens: Union[dict, None]) -> str:
+        asset_output = ""
+        policyid = ""
+        token_list = []
+        if tokens:
+            for token in tokens:
+                name = token["name"]
+                amount = token["amount"]
+                policyid = token["policyID"]
+                # name = name.encode("utf-8")
+                # name = b16encode(name).decode("utf-8")
+                # name = name.lower()
+                name = self.string_encode(name)
+                full_name = policyid + "." + name
+                asset_output = (str(amount) + " " + full_name + "+")
+                token_list.append((name, amount, policyid))
+        
+        return asset_output[:-1]
+
+    def adestin_min_utxo(self, tx_out_tokens: str, source_address: str) -> int:
+        return self.min_required_utxo(source_address, tx_out_tokens)
+
+    def check(self, address_source: Source, qDestination: int, assets_output: str) -> bool:
+        utxos = address_source.transactions
+        tLovelace = address_source.tLovelace
+        amounts = []
+        asset = assets_output.split(" ")
+        asset_check = True
+        lovelace_check = False
+        if assets_output != "":
+            asset_check = False
+            for utxo in utxos:
+                for amount in utxo["amounts"]:
+                    amounts.append(amount)
+                    if asset[1] in amount["token"]:
+                        if asset[0] <= amount["amount"]:
+                            asset_check = True
+        if tLovelace > qDestination:
+            lovelace_check = True
+        return asset_check and lovelace_check
+    
+    def adestin_string(self) -> Tuple[str, int, str]:
+        tx_out_address = ""
+        amount = 0
+        asset_output_string = ""
+        if self.adestins:
+            asset_output_string = ""
+            for adestin in self.adestins:
+                tx_out_address = adestin["address"]
+                amount = adestin.get("amount", 0)
+                tokens = adestin.get("tokens", None)
+                asset_output = self.adestin_tokens(tokens)
+                if asset_output != "":
+                    asset_output = "+" + asset_output
+                quantity = self.min_required_utxo(tx_out_address, asset_output)
+                if amount < quantity:
+                    amount = quantity
+                # self.check_source()
+                asset_output_string += asset_output
+        return tx_out_address, amount, asset_output_string
+
+    def adestin_add(self, address: str="", quantity: int=0, assets: str="") -> list[str]:
+        output_string = ""
+        output_string = address + "+" + str(quantity)
+        output_asset = ""
+        # if assets != "":
+        #     output_asset = assets
+        output_string = output_string + assets
+        return ["--tx-out", output_string]
+
+# @dataclass()
+# class TxOut(Starter):
+#     # addr_output_array.append("--tx-out")
+#     def add(self, address: str, quantity: int, assets: str) -> list[str]:
+#         output_string = []
+#         output_string.append("--tx-out")
+#         output_string.append(address + "+"+ str(quantity)+ "+"+ assets)
+#         return output_string
+
+@dataclass()
+class Node(Starter):
+    """
+    Class using primarly Cardano CLI commands
+    """
+
+    # def check_source(self, utxos: list[dict], assets_output: str) -> bool:
+    #     asset = assets_output.split(" ")
+    #     check = False
+    #     for utxo in utxos:
+    #         amounts = utxo["amounts"]
+    #         for tokens in amounts:
+    #             if asset[1] in tokens["token"]:
+    #                 if asset[0] <= tokens["amount"]:
+    #                     check = True
+    #     return check
+
+
+
+    def get_txid_body(self) -> str:
+
+        """ Get the transaction hash from the tx.draft file
+        No need of paramaters as it assumes that the tx.draft is located at
+        .priv/transactions
+
+        :return str: TxOutRefId#TxOutRefIdx
+        """
+
+        print("Executing get transaction ID from Tx.draft file")
+        command_string = [
+            self.CARDANO_CLI_PATH,
+            "transaction",
+            "txid",
+            "--tx-body-file",
+            self.TRANSACTION_PATH_FILE + "/tx.draft",
+        ]
+        rawResult = self.execute_command(command_string, None)
+        return rawResult
+
+    def get_tx_info(
+        self,
+        txOutRefId: str,
+        txOutRefIdx: int = 0,
+    ) -> str:
+
+        print("Exploring the transaction info")
+        command_string = [
+            self.CARDANO_CLI_PATH,
+            "query",
+            "utxo",
+            "--tx-in",
+            txOutRefId + "#" + str(txOutRefIdx),
+            "--out-file",
+            self.TRANSACTION_PATH_FILE + "/tx_info.json",
+        ]
+        command_string = self.insert_network(command_string, 5, 1)
+        rawResult = self.execute_command(command_string, None)
+        return rawResult
+
+    def query_tip_exec(self):
+        """Execute query tip.
+
+        Returns:
+            _type_: json with latest epoch, hash, slot, block, era,
+                syncProgress
+        """
+        print("Executing Query Tip")
+        command_string = [self.CARDANO_CLI_PATH, "query", "tip"]
+        if self.CARDANO_NETWORK == "testnet":
+            command_string, index = self.insert_command(
+                3, 1, command_string, ["--testnet-magic", self.CARDANO_NETWORK_MAGIC]
+            )
+        else:
+            command_string, index = self.insert_command(
+                3, 1, command_string, ["--mainnet"]
+            )
+
+        rawResult = self.execute_command(command_string, None)
+        rawResult = json.loads(rawResult)
+        self.LOGGER.info(rawResult)
+        return rawResult
 
     def utxo_selection(
         self,
@@ -916,8 +1201,10 @@ class Node(Starter):
         assert v.validate(params, schema)  # type: ignore
         # Unpacking the minimum required arguments
         address_origin = str(params.get("address_origin"))
+        address_source = Source(address_origin)
+        address_source_check = address_source.check()
         # Validate address
-        address_origin = self.id_to_address(address_origin)
+        # address_origin = self.id_to_address(address_origin)
 
         # Unpacking optional arguments
         change_address = params.get("change_address")
@@ -937,166 +1224,90 @@ class Node(Starter):
             inline_datum_array.append(inline_datum_json_file)
 
         rawResult = self.query_protocol(True)
-        init_min_utxo_value = self.min_required_utxo(address_origin)
-        min_utxo_value = 0
-
-        addr_origin_balance = self.get_balance(address_origin)
-        addr_origin_tx = self.get_transactions(address_origin)
-        if addr_origin_balance.get("lovelace") is not None:
+        if address_source_check:
+            qDestination = 0
             addr_output_array = []
-            quantity_array = []
             mint_array = []
             ttl_validity = ""
             ttl_slot = ""
+            action = "send"
+
+
+            # Mint part
             mint = Mint(mint)
-            mint_array, mint_output_string, action = mint.mint_string()
+            mint_array, mint_output_string, action = mint.string()
             ttl_validity, ttl_slot = mint.ttl()
             mint_utxo_value = mint.min_utxo(mint_output_string)
-            coin_name = mint.coin_name()
+            if mint.mint is not None:
+                # --tx-out for mint
+                # mint_output_array = mint.mint_add(address_origin, mint_utxo_value, mint_output_string)
+                if address_destin_array == None:
+                    address_destin_array = [
+                        {
+                            "address": address_source.asource,
+                            "tokens": mint.tokens 
+                        }
+                    ]
 
-            asset_output_string = ""
-            TxHash_in_asset = []
-            total_asset_name_len = 0
-            if address_destin_array is not None:
-                for address_destin in address_destin_array:
-                    total_asset_name_len = 0
-                    tx_out_address = address_destin.get("address")
-                    amount = address_destin.get("amount", None)
-                    if amount is None:
-                        amount = 0
-                    quantity = amount
-                    if (
-                        address_destin.get("tokens") is not None
-                        and address_destin.get("tokens") != []
-                    ):
-                        asset_output_string = ""
-                        for asset in address_destin.get("tokens"):
-                            asset_name = asset.get("name").encode("utf-8")
-                            asset_name = b16encode(asset_name).decode("utf-8")
-                            asset_name = asset_name.lower()
-                            total_asset_name_len += len(asset_name)
-                            amount = asset.get("amount")
-                            policyID = asset.get("policyID")
-                            asset_full_name = policyID + "." + asset_name
-                            if mint is not None:
-                                asset_output_string += (
-                                    str(amount) + " " + asset_full_name + "+"
-                                )
-                            else:
-                                if asset_full_name in addr_origin_balance:
-                                    asset_balance = addr_origin_balance.get(
-                                        asset_full_name
-                                    )
-                                    if amount <= asset_balance:
-                                        (
-                                            TxHash_in,
-                                            amount_equal,
-                                        ) = self.utxo_selection(
-                                            addr_origin_tx, amount
-                                        )
-                                        asset_output_string += (
-                                            str(amount)
-                                            + " "
-                                            + asset_full_name
-                                            + "+"
-                                        )
-                                        TxHash_in_asset += TxHash_in
-                                    else:
-                                        self.LOGGER.error(
-                                            f"Balance not enough asset_balance: {asset_balance}, amount: {amount}"
-                                        )
-                                        raise Exception()
-                                else:
-                                    self.LOGGER.error(
-                                        f"{asset_full_name} could not be found in wallet origin"
-                                    )
-                                    raise Exception()
-                            asset_output_string = asset_output_string[:-1]
-                        min_utxo_value = 2000000
-                        if quantity == 0:
-                            quantity = min_utxo_value
-                        if quantity >= min_utxo_value:
-                            quantity_array.append(quantity)
-                            addr_output_array.append("--tx-out")
-                            addr_output_array.append(
-                                tx_out_address
-                                + "+"
-                                + str(quantity)
-                                + "+"
-                                + asset_output_string
-                            )
-                        else:
-                            self.LOGGER.error(
-                                f"Quantity to send less than min_utxo_value of: {min_utxo_value}"
-                            )
-                            raise Exception()
-                    else:
-                        # Calculate the min ADA in Utxo
-                        if inline_datum is not None:
-                            min_utxo_value = self.min_required_utxo(
-                                address_origin,
-                                mint_output_string,
-                                inline_datum_array[0],
-                                inline_datum_array[1],
-                            )
-                        else:
-                            min_utxo_value = self.min_required_utxo(
-                                address_origin, mint_output_string
-                            )
-                        if quantity == 0:
-                            quantity = min_utxo_value
-                        if quantity >= min_utxo_value:
-                            quantity_array.append(quantity)
-                            addr_output_array.append("--tx-out")
-                            addr_output_array.append(
-                                tx_out_address
-                                + "+"
-                                + str(quantity)
-                                + mint_output_string
-                            )
-                        else:
-                            self.LOGGER.error(
-                                f"Quantity to send less than min_utxo_value of: {min_utxo_value}"
-                            )
-                            raise Exception()
-            else:
-                quantity = 0
-                if inline_datum is not None:
-                    min_utxo_value = self.min_required_utxo(
-                        address_origin,
-                        mint_output_string,
-                        inline_datum_array[0],
-                        inline_datum_array[1],
-                    )
-                else:
-                    min_utxo_value = self.min_required_utxo(
-                        address_origin, mint_output_string
-                    )
-                if mint.mint is not None and action == "mint":
-                    addr_output_array.append("--tx-out")
-                    addr_output_array.append(
-                        address_origin
-                        + "+"
-                        + str(mint_utxo_value)
-                        + mint_output_string
-                    )
-                else:
-                    if quantity == 0:
-                        quantity = min_utxo_value
-                    if quantity >= min_utxo_value:
-                        quantity_array.append(quantity)
-                        addr_output_array.append("--tx-out")
-                        addr_output_array.append(
-                            address_origin
-                            + "+"
-                            + str(quantity)
-                            + mint_output_string
-                        )
-                    else:
-                        self.LOGGER.error(
-                            f"Quantity to send less than min_utxo_value of: {min_utxo_value}"
-                        )
-                        raise Exception()
+            # End of mint part
+
+            # Output part
+            address_destin = Destination(address_destin_array)
+            if address_destin.adestins != []:
+                tx_out_address, qDestination, asset_output_string = address_destin.adestin_string()
+                assets = ""
+                if action == "send" or action == "burn":
+                    assets = asset_output_string
+                source_flag = address_destin.check(address_source, qDestination, assets)
+                if source_flag and action != "burn":
+                    addr_output_array = address_destin.adestin_add(tx_out_address, qDestination, asset_output_string)
+                    print(addr_output_array) # --tx-out for destin address
+            # End of output part
+            
+            # Total lovelace required
+            qLovelace = mint_utxo_value + qDestination
+            source_tokens = address_destin.adestin_tokenList()
+            TxHash, amount_equal = address_source.asource_utxo(qLovelace, action, source_tokens)
+            TxHash_in = address_source.asource_add(TxHash)
+            
+            # else:
+            #     quantity = 0
+            #     if inline_datum is not None:
+            #         min_utxo_value = self.min_required_utxo(
+            #             address_origin,
+            #             mint_output_string,
+            #             inline_datum_array[0],
+            #             inline_datum_array[1],
+            #         )
+            #     else:
+            #         min_utxo_value = self.min_required_utxo(
+            #             address_origin, mint_output_string
+            #         )
+            #     if mint.mint is not None and action == "mint":
+            #         addr_output_array.append("--tx-out")
+            #         addr_output_array.append(
+            #             address_origin
+            #             + "+"
+            #             + str(mint_utxo_value)
+            #             + mint_output_string
+            #         )
+            #     else:
+            #         if quantity == 0:
+            #             quantity = min_utxo_value
+            #         if quantity >= min_utxo_value:
+            #             quantity_array.append(quantity)
+            #             addr_output_array.append("--tx-out")
+            #             addr_output_array.append(
+            #                 address_origin
+            #                 + "+"
+            #                 + str(quantity)
+            #                 + mint_output_string
+            #             )
+            #         else:
+            #             self.LOGGER.error(
+            #                 f"Quantity to send less than min_utxo_value of: {min_utxo_value}"
+            #             )
+            #             raise Exception()
             if change_address is not None:
                 change_address = self.id_to_address(change_address)
             else:
@@ -1108,19 +1319,20 @@ class Node(Starter):
             # else: 
             #     target_calculated = sum(quantity_array) + init_min_utxo_value
             # coin_name = "lovelace"
-            if action == "burn":
-                target_calculated = mint.mint_quantity()
-            else: 
-                target_calculated = max(sum(quantity_array), min_utxo_value) + init_min_utxo_value
-                coin_name = "lovelace"
-            TxHash_in, amount_equal = self.utxo_selection(
-                addr_origin_tx, target_calculated, min_utxo_value, coin_name=coin_name, action=action)
 
-            if TxHash_in_asset != [] and TxHash_in != []:
-                TxHash_in = TxHash_in + TxHash_in_asset  # type: ignore
-                TxHash_in = list(set(TxHash_in))  # remove utxo duplicates
-            tx_in = len(TxHash_in) * ["--tx-in"]
-            TxHash_in = list(chain(*zip(tx_in, TxHash_in)))  # Intercalate elements
+            # if action == "burn":
+            #     target_calculated = mint.mint_quantity()
+            # else: 
+            #     target_calculated = max(sum(quantity_array), min_utxo_value) + init_min_utxo_value
+            #     coin_name = "lovelace"
+            # TxHash_in, amount_equal = self.utxo_selection(
+            #     addr_origin_tx, target_calculated, min_utxo_value, coin_name=coin_name, action=action)
+
+            # if TxHash_in_asset != [] and TxHash_in != []:
+            #     TxHash_in = TxHash_in + TxHash_in_asset  # type: ignore
+            #     TxHash_in = list(set(TxHash_in))  # remove utxo duplicates
+            # tx_in = len(TxHash_in) * ["--tx-in"]
+            # TxHash_in = list(chain(*zip(tx_in, TxHash_in)))  # Intercalate elements
 
             if witness is not None:
                 witness = str(witness)
@@ -1313,6 +1525,8 @@ class Node(Starter):
             )
 
         return rawResult
+
+
 
 @dataclass()
 class Keys(Starter):

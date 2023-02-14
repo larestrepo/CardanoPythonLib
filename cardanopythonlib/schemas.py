@@ -43,7 +43,7 @@ build_tx_components_schema = {
                 "required": False,
                 "dependencies": "address_origin",
                 "schema": {
-                    "policyID": {"type": "string", "required": True},
+                    "action": {"type": "string", "required": True, "allowed": ["burn", "mint"]},
                     "tokens": {
                         "type": "list",
                         "required": False,
@@ -52,7 +52,7 @@ build_tx_components_schema = {
                             "schema": {
                                 "name": {"type": "string", "required": True},
                                 "amount": {"type": "integer", "required": True, "dependencies": "name"},
-                                "action": {"type": "string", "required": True, "dependencies": "name", "allowed": ["burn", "mint"]}
+                                "policyID": {"type": "string", "dependencies": "name", "required": True}
                             },
                         },
                     },
