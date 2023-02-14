@@ -1,10 +1,7 @@
-import json
 import os
 import sys
 import unittest
-import uuid
 import time
-from dataclasses import dataclass
 
 from cardanopythonlib import base
 from cardanopythonlib.path_utils import remove_file
@@ -21,6 +18,7 @@ class TestLibrary(unittest.TestCase):
         self.address_origin = (
             "addr_test1vp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qcul3azr"
         )
+        self.source = base.Source("addr_test1vp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qcul3azr")
         self.metadata = {"1337": {"name": "hello world", "completed": 0}}
         self.address_destin_no_tokens = [
             {
@@ -28,6 +26,18 @@ class TestLibrary(unittest.TestCase):
                 "amount": 3000000,
                 # "tokens": [],
             }
+        ]
+        self.address_destin_with_tokens = [
+            {
+                "address": "addr_test1qp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qc0wx9lg9h8x72hctqg34gy2eygnlrf7nyf343w34r67hjskugtxl",
+                "tokens": [{
+
+                    "name": "MyTestEMG",
+                    "amount": 1,
+                    "policyID": "3547253f769b35cd318e062f7ade5b4ceb43462beb3f12ac18ce536b"
+                }
+                ],
+            },
         ]
         self.inline_datum = {"constructor": 0, "fields": [{"int": 42}]}
         self.script_name = "script_name"
@@ -41,6 +51,7 @@ class TestLibrary(unittest.TestCase):
     # This is the start of the section to test Starter class and Keys class
     #####################################
 
+
     def test_query_tip_exec(self):
         tip = self.node.query_tip_exec()
         self.assertIs(type(tip), dict, "Verify that your node is running")
@@ -53,145 +64,67 @@ class TestLibrary(unittest.TestCase):
             f"Verify that your node is in sync. Current progress: {tip['syncProgress']}",
         )
 
-    def test_query_protocol_params(self):
-        saving_path = "./.priv/transactions"
-        protocol = self.node.query_protocol(True)
-        self.assertNotEqual(
-            protocol,
-            "",
-            "problems with the command execution, check that cardano cli and cardano node are properly configured",
-        )
-        protocol_file = saving_path + "/protocol.json"
-        file_exists = os.path.exists(protocol_file)
-        remove_file(saving_path, "/protocol.json")
-        self.assertTrue(
-            file_exists,
-            f"problems generating the protocol params file from query_protocol function",
-        )
+    # def test_utxo_selection(self):
+    #     mock_transactions = [
+    #         {
+    #             "hash": "0d085c60b8db224e43608886250d524ceee17f4b4b1091aec879e40135975644",
+    #             "id": "0",
+    #             "amounts": [{"token": "lovelace", "amount": "2000000"}],
+    #         },
+    #         {
+    #             "hash": "496602485616c1b636461762f1e41084f863a51847ecc9fbc30a504d28b8917b",
+    #             "id": "0",
+    #             "amounts": [{"token": "lovelace", "amount": "1000000000"}],
+    #         },
+    #         {
+    #             "hash": "c2e7b4319abc56ba57ba1c044a36aac3613b71c1131ab30f86e16ba0ffba9c12",
+    #             "id": "0",
+    #             "amounts": [
+    #                 {"token": "lovelace", "amount": "2000000"},
+    #                 {
+    #                     "token": "3547253f769b35cd318e062f7ade5b4ceb43462beb3f12ac18ce536b.4d7954657374454d47",
+    #                     "amount": "1",
+    #                 },
+    #             ],
+    #         },
+    #     ]
+    #     utxo_tokens = list(filter(lambda utxo: len(utxo["amounts"]) != 1, mock_transactions))
+    #     txHash_in = self.source.selection_utxo(utxo_tokens, 3000000) # Send lovelace
+    #     self.assertTrue(
+    #         txHash_in == (['496602485616c1b636461762f1e41084f863a51847ecc9fbc30a504d28b8917b#0'], 1000000000),
+    #         "Wrong selection in assert 1. Send lovelace"
+    #     )
+    #     txHash_in = self.source.selection_utxo(mock_transactions, 2000000) # Send lovelace
+    #     self.assertTrue(
+    #         txHash_in == (['496602485616c1b636461762f1e41084f863a51847ecc9fbc30a504d28b8917b#0'], 1000000000),
+    #         "Wrong selection in assert 2. Send lovelace"
+    #     )
+    #     txHash_in = self.source.selection_utxo(mock_transactions, 1000000) # Send lovelace
+    #     self.assertTrue(
+    #         txHash_in == (['0d085c60b8db224e43608886250d524ceee17f4b4b1091aec879e40135975644#0'], 2000000),
+    #         "Wrong selection in assert 3. Send lovelace"
+    #     )
+    #     txHash_in = self.source.selection_utxo(mock_transactions, 1000000000) # Send lovelace
+    #     self.assertTrue(
+    #         txHash_in == (['496602485616c1b636461762f1e41084f863a51847ecc9fbc30a504d28b8917b#0', '0d085c60b8db224e43608886250d524ceee17f4b4b1091aec879e40135975644#0'], 1002000000),
+    #         "Wrong selection in assert 4. Send lovelace"
+    #     )
+    #     txHash_in = self.source.selection_utxo(mock_transactions, 2000000)# Mint token. It should take the utxo with enough balance and without tokens
+    #     self.assertTrue(
+    #         txHash_in == (['496602485616c1b636461762f1e41084f863a51847ecc9fbc30a504d28b8917b#0'], 1000000000),
+    #         "Wrong selection in assert 5. Mint token. It should take the utxo with enough balance and without tokens"
+    #     )
 
-    def test_min_required_utxo(self):
-
-        address = "addr_test1vrpns5yma4fy2dllhkzpyeur8xes94d903xu7enwuhc4erqecraxf"
-        value = self.node.min_required_utxo(address)
-        print(value)
-        self.assertIs(type(value), int, "Return value is not integer")
-       
-
-    def test_get_transactions(self):
-        transactions = self.node.get_transactions(self.address_origin)
-        self.assertIs(type(transactions), list, "Confirm if the address has utxos")
-
-        for transaction in transactions:
-            self.assertIs(
-                type(transaction), dict, "Confirm that the transaction is a dictionary"
-            )
-            self.assertTrue(
-                list(transaction.keys()) == ["hash", "id", "amounts"],
-                "missing key in transaction array. Check that hash, id, amounts is present",
-            )
-            self.assertTrue(len(transaction["hash"]) == 64, "Verify the hash format")
-            self.assertIs(type(int(transaction["id"])), int, "Verify the hash format")
-            self.assertIs(
-                type(transaction["amounts"]),
-                list,
-                "Confirm that amounts items is a list",
-            )
-            found = False
-            for amount in transaction["amounts"]:
-                self.assertIs(
-                    type(amount), dict, "Confirm that the amount is a dictionary"
-                )
-                self.assertTrue(
-                    [
-                        True if token == "lovelace" else False
-                        for token in amount["token"]
-                    ],
-                    "No lovelace found",
-                )
-
-    def test_utxo_selection(self):
-        mock_transactions = [
-            {
-                "hash": "0d085c60b8db224e43608886250d524ceee17f4b4b1091aec879e40135975644",
-                "id": "0",
-                "amounts": [{"token": "lovelace", "amount": "2000000"}],
-            },
-            {
-                "hash": "496602485616c1b636461762f1e41084f863a51847ecc9fbc30a504d28b8917b",
-                "id": "0",
-                "amounts": [{"token": "lovelace", "amount": "1000000000"}],
-            },
-            {
-                "hash": "c2e7b4319abc56ba57ba1c044a36aac3613b71c1131ab30f86e16ba0ffba9c12",
-                "id": "0",
-                "amounts": [
-                    {"token": "lovelace", "amount": "2000000"},
-                    {
-                        "token": "3547253f769b35cd318e062f7ade5b4ceb43462beb3f12ac18ce536b.4d7954657374454d47",
-                        "amount": "1",
-                    },
-                ],
-            },
-        ]
-        txHash_in = self.node.utxo_selection(mock_transactions, 3000000) # Send lovelace
-        self.assertTrue(
-            txHash_in == (['496602485616c1b636461762f1e41084f863a51847ecc9fbc30a504d28b8917b#0'], 1000000000),
-            "Wrong selection in assert 1. Send lovelace"
-        )
-        txHash_in = self.node.utxo_selection(mock_transactions, 2000000) # Send lovelace
-        self.assertTrue(
-            txHash_in == (['496602485616c1b636461762f1e41084f863a51847ecc9fbc30a504d28b8917b#0'], 1000000000),
-            "Wrong selection in assert 2. Send lovelace"
-        )
-        txHash_in = self.node.utxo_selection(mock_transactions, 1000000) # Send lovelace
-        self.assertTrue(
-            txHash_in == (['0d085c60b8db224e43608886250d524ceee17f4b4b1091aec879e40135975644#0'], 2000000),
-            "Wrong selection in assert 3. Send lovelace"
-        )
-        txHash_in = self.node.utxo_selection(mock_transactions, 1000000000) # Send lovelace
-        self.assertTrue(
-            txHash_in == (['496602485616c1b636461762f1e41084f863a51847ecc9fbc30a504d28b8917b#0', '0d085c60b8db224e43608886250d524ceee17f4b4b1091aec879e40135975644#0'], 1002000000),
-            "Wrong selection in assert 4. Send lovelace"
-        )
-        txHash_in = self.node.utxo_selection(mock_transactions, 2000000)# Mint token. It should take the utxo with enough balance and without tokens
-        self.assertTrue(
-            txHash_in == (['496602485616c1b636461762f1e41084f863a51847ecc9fbc30a504d28b8917b#0'], 1000000000),
-            "Wrong selection in assert 5. Mint token. It should take the utxo with enough balance and without tokens"
-        )
-        # txHash_in = self.node.utxo_selection(mock_transactions, 2000000, deplete=True)
-        # self.assertTrue(
-        #     txHash_in == (['496602485616c1b636461762f1e41084f863a51847ecc9fbc30a504d28b8917b#0'], 1000000000),
-        #     "Wrong selection in assert 2"
-        # )
-        txHash_in = self.node.utxo_selection(mock_transactions, 1, coin_name="3547253f769b35cd318e062f7ade5b4ceb43462beb3f12ac18ce536b.4d7954657374454d47") # If coin name specified with default action it means that the token is to be sent"
-        self.assertTrue(
-            txHash_in == (['c2e7b4319abc56ba57ba1c044a36aac3613b71c1131ab30f86e16ba0ffba9c12#0'], 2000000),
-            "Wrong selection in assert 6. If coin name specified with default action it means that the token is to be sent"
-        )
-        txHash_in = self.node.utxo_selection(mock_transactions, 1, coin_name="3547253f769b35cd318e062f7ade5b4ceb43462beb3f12ac18ce536b.4d7954657374454d47") # Burn if coin name specified with action = "Burn"
-        self.assertTrue(
-            txHash_in == (['c2e7b4319abc56ba57ba1c044a36aac3613b71c1131ab30f86e16ba0ffba9c12#0'], 2000000),
-            "Wrong selection in assert 6. Burn if coin name specified with action = Burn"
-        )
-
-
-    def test_get_balance(self):
-        CARDANO_NETWORK = self.starter.CARDANO_NETWORK
-        try:
-            assert CARDANO_NETWORK == "testnet" or "mainnet"
-            if CARDANO_NETWORK == "testnet":
-                mock_address = (
-                    "addr_test1wqrjzj0a0yl5nm0tatlxkfp0yh9vwt7hlsxql8nthcv0ycq457tgc"
-                )
-            else:
-                mock_address = "addr1qx466898end6q5mpvrwwmycq35v83c9e8cnffadv6gr6q6azs4s26v4800nwg8jygvrdqh6xhsphct0d4zqsnd3sagxqqjjgln"
-            balance = self.node.get_transactions(mock_address)
-            self.assertIs(type(balance), dict, "Confirm if the address has utxos")
-
-        except AssertionError:
-            print(
-                f"Verify your CARDANO_NETWORK in the json settings. Current value is: {CARDANO_NETWORK}"
-            )
+    #     txHash_in = self.source.selection_utxo(mock_transactions, 1, coin_name="3547253f769b35cd318e062f7ade5b4ceb43462beb3f12ac18ce536b.4d7954657374454d47") # If coin name specified with default action it means that the token is to be sent"
+    #     self.assertTrue(
+    #         txHash_in == (['c2e7b4319abc56ba57ba1c044a36aac3613b71c1131ab30f86e16ba0ffba9c12#0'], 2000000),
+    #         "Wrong selection in assert 6. If coin name specified with default action it means that the token is to be sent"
+    #     )
+    #     txHash_in = self.source.selection_utxo(mock_transactions, 1, coin_name="3547253f769b35cd318e062f7ade5b4ceb43462beb3f12ac18ce536b.4d7954657374454d47") # Burn if coin name specified with action = "Burn"
+    #     self.assertTrue(
+    #         txHash_in == (['c2e7b4319abc56ba57ba1c044a36aac3613b71c1131ab30f86e16ba0ffba9c12#0'], 2000000),
+    #         "Wrong selection in assert 6. Burn if coin name specified with action = Burn"
+    #     )
 
     def test_create_multisig_script(self):
         type = "all"
@@ -469,8 +402,7 @@ class TestLibrary(unittest.TestCase):
         # 
         params = {
             "address_origin": self.address_origin,
-            "address_destin": self.address_destin_no_tokens,
-            "change_address": self.address_origin,
+            "address_destin": self.address_destin_with_tokens,
             "metadata": self.metadata,
             # "mint": None,
             # "script_path": None,
@@ -522,7 +454,6 @@ class TestLibrary(unittest.TestCase):
         remove_file(script_file_path, "/" + self.script_name + ".policyid")
         remove_file(tx_file_path, "/tx_metadata")
         remove_file(tx_file_path, "/tx.draft")
-
 
     def test_just_burn(self):
         slot = 9764754

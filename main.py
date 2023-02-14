@@ -1,18 +1,18 @@
-from cardanopythonlib import base
+from cardanopythonlib import base, keys
 
 # starter = base.Starter()
 # print(starter.CARDANO_CLI_PATH)
 # config_path = "./cardano_config.ini"
 
-node = base.Node()
+# node = base.Node()
 
-print(node.get_txid_body())
+# print(node.get_txid_body())
 
-print(node.get_tx_info("746975a3a70a1e9832d5b46e46902a436dac24bf48c5d7e0507feeea7e4bea80"))
+# print(node.get_tx_info("746975a3a70a1e9832d5b46e46902a436dac24bf48c5d7e0507feeea7e4bea80"))
 
-print(node.query_tip_exec())
+# print(node.query_tip_exec())
 
-print(node.MINT_FOLDER)
+# print(node.MINT_FOLDER)
 # node.create_simple_script("MyFirstMultiSig","mint", "all", 1, ["80b34df2162e9c4a38ce63322a8f903c9455a0bebd64c02cf1f3222a"])
 # parameters = {
 #     "name": "Myfinaltest",
@@ -29,9 +29,9 @@ print(node.MINT_FOLDER)
 # print(policyid)
 # print(node.query_protocol())
 
-# keys = base.Keys()
-# keys.deriveAllKeys("wallet_name", size = 24, save_flag = False)
-# keys.generate_mnemonic(size= 24)
+keys = keys.Keys()
+keys.deriveAllKeys("wallet_name", size = 24, save_flag = False)
+keys.generate_mnemonic(size= 24)
 
 # # Option 1
 
