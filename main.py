@@ -1,21 +1,16 @@
 from cardanopythonlib import base, keys
 
-from log2d import Log 
-
-Log("main")
-Log.main.warning("Danger, Will Robinson!")
-
 # starter = base.Starter()
 # print(starter.CARDANO_CLI_PATH)
 # config_path = "./cardano_config.ini"
 
-# node = base.Node()
+node = base.Node()
 
 # print(node.get_txid_body())
 
 # print(node.get_tx_info("746975a3a70a1e9832d5b46e46902a436dac24bf48c5d7e0507feeea7e4bea80"))
 
-# print(node.query_tip_exec())
+node.query_tip_exec()
 
 # print(node.MINT_FOLDER)
 # node.create_simple_script("MyFirstMultiSig","mint", "all", 1, ["80b34df2162e9c4a38ce63322a8f903c9455a0bebd64c02cf1f3222a"])
@@ -34,9 +29,9 @@ Log.main.warning("Danger, Will Robinson!")
 # print(policyid)
 # print(node.query_protocol())
 
-keys = keys.Keys()
-keys.deriveAllKeys("MeshForSuan", size = 24, save_flag = True)
-keys.generate_mnemonic(size= 24)
+# keys = keys.Keys()
+# keys.deriveAllKeys("MeshForSuan", size = 24, save_flag = True)
+# keys.generate_mnemonic(size= 24)
 
 # # Option 1
 
@@ -52,7 +47,9 @@ keys.generate_mnemonic(size= 24)
 # node.KEYS_FILE_PATH
 # wallet_id = "wallet01"
 # print(node.query_tip_exec())
-# node.get_transactions(wallet_name)
+wallet_name = "addr_test1vzqtxn0jzchfcj3cee3ny250jq7fg4dqh67kfspv78ejy2scj24vv"
+node.get_transactions(wallet_name)
+node.get_balance(wallet_name)
 # print(node.analyze_tx("tx.draft"))
 
 # hash= keys.keyHashing(wallet_id)
@@ -1093,14 +1090,14 @@ inline_datum = {
     ]
 }
 
-address_origin = "addr_test1vpsudqpk00kn4g6qzwm24re8gvtc2lvg2yr4gm52pu89wfqd7n25a"
+address_origin = "addr_test1vzqtxn0jzchfcj3cee3ny250jq7fg4dqh67kfspv78ejy2scj24vv"
 
 params = {
-    "address_origin": "addr_test1vpsudqpk00kn4g6qzwm24re8gvtc2lvg2yr4gm52pu89wfqd7n25a",
+    "address_origin": "addr_test1vzqtxn0jzchfcj3cee3ny250jq7fg4dqh67kfspv78ejy2scj24vv",
     "address_destin": [
         {
-        "address": "addr_test1vp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qcul3azr",
-        "amount": 1000000000,
+        "address": "addr_test1vqcltfcqz2km3jacfn8dp95ht8e65pzq5q2aavssq5wx3pqg5hhkw",
+        "amount": 9838764076,
       },
     ],
     # "inline_datum": inline_datum,
@@ -1117,9 +1114,9 @@ params = {
 #     "inline_datum": inline_datum,
 # }
 
-# result = node.build_tx_components(params)
-# print(result)
+result = node.build_tx_components(params)
+print(result)
 
-# sign_address_name = "AylluPayment"
-# result = node.sign_transaction([sign_address_name])
-# result = node.submit_transaction()
+sign_address_name = "forPlutus"
+result = node.sign_transaction([sign_address_name])
+result = node.submit_transaction()

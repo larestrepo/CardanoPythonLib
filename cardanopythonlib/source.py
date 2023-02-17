@@ -75,11 +75,12 @@ class Source(Starter):
                 if amount_greater == []:
                     TxHash = []
                     amount_equal = 0
-                amount_equal = min(amount_greater)
-                index = [
-                    i for i, j in enumerate(amount_greater) if j == amount_equal
-                ][0]
-                TxHash.append(TxHash_greater[index])
+                else:
+                    amount_equal = min(amount_greater)
+                    index = [
+                        i for i, j in enumerate(amount_greater) if j == amount_equal
+                    ][0]
+                    TxHash.append(TxHash_greater[index])
             elif sum(amount_lower) > quantity +  self.minCost and TxHash_greater == []:
                 # Creating descending tuple list (utxo, q) to fill te amount required
                 combined = sorted(list(zip(TxHash_lower, amount_lower)), key=lambda utxo: utxo[1], reverse=True)

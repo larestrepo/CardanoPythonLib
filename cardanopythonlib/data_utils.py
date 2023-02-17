@@ -1,10 +1,9 @@
 # General imports
 import logging
 import logging.config
-from typing import Optional, Union
+from typing import Union
 import json
 # Module imports
-import path_utils
 from collections.abc import MutableMapping
 
 
@@ -14,18 +13,18 @@ def getlogger(logger_name, level):
         'disable_existing_loggers': False,
         'formatters': {
             'default_formatter': {
-                'format': '[%(levelname)s:%(asctime)s %(name)s] %(message)s'
+                'format': '[%(levelname)s:%(asctime)s] %(message)s'
             },
         },
         'handlers': {
-            'stream_handler': {
+            'console': {
                 'class': 'logging.StreamHandler',
                 'formatter': 'default_formatter',
             },
         },
         'loggers': {
             logger_name: {
-                'handlers': ['stream_handler'],
+                'handlers': ['console'],
                 'level': level,
                 'propagate': True
             }

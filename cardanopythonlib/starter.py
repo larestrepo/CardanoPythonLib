@@ -226,8 +226,8 @@ class Starter:
             ada_transactions: list of transactions with lovelace only
             token_transactions: list of transactions including custom tokens
         """
-        print("Executing Get Transactions")
         address = self.id_to_address(wallet_id)
+        self.LOGGER.info(f"Executing Get Transactions for {address}")
         command_string = [self.CARDANO_CLI_PATH, "query", "utxo", "--address", address]
         if self.CARDANO_NETWORK == "testnet":
             command_string, index = self.insert_command(
@@ -264,7 +264,7 @@ class Starter:
                     tr_amount["amount"] = trans[3 + i * 3 + 2]
                     transaction["amounts"].append(tr_amount)
                 token_transactions.append(transaction)
-        self.LOGGER.debug(token_transactions)
+        self.LOGGER.info(f"Transactions: {token_transactions}")
         return token_transactions
 
     def id_to_address(self, wallet_name: str) -> str:

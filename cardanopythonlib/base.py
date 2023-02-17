@@ -374,116 +374,121 @@ class Node(Starter):
             qLovelace = mint_utxo_value + qDestination
             source_tokens = address_destin.tokenList()
             TxHash, amount_equal = address_source.utxo(qLovelace, action, source_tokens)
-            TxHash_in = address_source.add(TxHash)
+            if TxHash != []:
+                TxHash_in = address_source.add(TxHash)
             
-            if change_address is not None:
-                change_address = self.id_to_address(change_address)
-            else:
-                change_address = address_origin
-            addr_output_array.append("--change-address")
-            addr_output_array.append(change_address)
+                if change_address is not None:
+                    change_address = self.id_to_address(change_address)
+                else:
+                    change_address = address_origin
+                addr_output_array.append("--change-address")
+                addr_output_array.append(change_address)
 
-            if witness is not None:
-                witness = str(witness)
-            else:
-                witness = str(1)
-            #########################################################
-            command_string = [
-                self.CARDANO_CLI_PATH,
-                "transaction",
-                "build",
-                "--witness-override",
-                witness,
-                "--out-file",
-                self.TRANSACTION_PATH_FILE + "/tx.draft",
-            ]
-            i = 0
-            command_string, index = self.insert_command(
-                3 + i, 1, command_string, TxHash_in
-            )
-            i = i + index
-            command_string, index = self.insert_command(
-                3 + i, 1, command_string, addr_output_array
-            )
-            i = i + index
-            metadata_array = []
-            if metadata is not None:
-                metadata_json_file = save_metadata(
-                    self.TRANSACTION_PATH_FILE, "tx_metadata.json", metadata
-                )
-                metadata_array.append("--metadata-json-file")
-                metadata_array.append(metadata_json_file)
+                if witness is not None:
+                    witness = str(witness)
+                else:
+                    witness = str(1)
+                #########################################################
+                command_string = [
+                    self.CARDANO_CLI_PATH,
+                    "transaction",
+                    "build",
+                    "--witness-override",
+                    witness,
+                    "--out-file",
+                    self.TRANSACTION_PATH_FILE + "/tx.draft",
+                ]
+                i = 0
                 command_string, index = self.insert_command(
-                    3 + i, 1, command_string, metadata_array
+                    3 + i, 1, command_string, TxHash_in
                 )
                 i = i + index
-            if mint_array != []:
                 command_string, index = self.insert_command(
-                    3 + i, 1, command_string, mint_array
+                    3 + i, 1, command_string, addr_output_array
                 )
                 i = i + index
-                if ttl_validity != "" and ttl_slot != "":
-                    invalid = None
-                    if ttl_validity == "before":
-                        invalid = "--invalid-hereafter"
-                    elif ttl_validity == "after":
-                        invalid = "--invalid-before"
-                    else:
-                        self.LOGGER.error(
-                            f"Not supported type validity in the minting script {ttl_validity}"
-                        )
-                        raise TypeError()
+                metadata_array = []
+                if metadata is not None:
+                    metadata_json_file = save_metadata(
+                        self.TRANSACTION_PATH_FILE, "tx_metadata.json", metadata
+                    )
+                    metadata_array.append("--metadata-json-file")
+                    metadata_array.append(metadata_json_file)
                     command_string, index = self.insert_command(
-                        3 + i, 1, command_string, [invalid, ttl_slot]
+                        3 + i, 1, command_string, metadata_array
+                    )
+                    i = i + index
+                if mint_array != []:
+                    command_string, index = self.insert_command(
+                        3 + i, 1, command_string, mint_array
+                    )
+                    i = i + index
+                    if ttl_validity != "" and ttl_slot != "":
+                        invalid = None
+                        if ttl_validity == "before":
+                            invalid = "--invalid-hereafter"
+                        elif ttl_validity == "after":
+                            invalid = "--invalid-before"
+                        else:
+                            self.LOGGER.error(
+                                f"Not supported type validity in the minting script {ttl_validity}"
+                            )
+                            raise TypeError()
+                        command_string, index = self.insert_command(
+                            3 + i, 1, command_string, [invalid, ttl_slot]
+                        )
+                        i = i + index
+
+                script_path_array = []
+                if script_path is not None:
+                    script_path_array.append("--tx-in-script-file")
+                    script_path_array.append(script_path)
+                    command_string, index = self.insert_command(
+                        3 + i, 1, command_string, script_path_array
                     )
                     i = i + index
 
-            script_path_array = []
-            if script_path is not None:
-                script_path_array.append("--tx-in-script-file")
-                script_path_array.append(script_path)
-                command_string, index = self.insert_command(
-                    3 + i, 1, command_string, script_path_array
-                )
-                i = i + index
+                inline_datum_array = []
+                if inline_datum is not None:
+                    inline_datum_json_file = save_metadata(
+                        self.TRANSACTION_PATH_FILE, "tx_inline_datum.json", inline_datum
+                    )
+                    inline_datum_array.append("--tx-out-inline-datum-file")
+                    inline_datum_array.append(inline_datum_json_file)
+                    command_string, index = self.insert_command(
+                        3 + i, 1, command_string, inline_datum_array
+                    )
+                    i = i + index
 
-            inline_datum_array = []
-            if inline_datum is not None:
-                inline_datum_json_file = save_metadata(
-                    self.TRANSACTION_PATH_FILE, "tx_inline_datum.json", inline_datum
-                )
-                inline_datum_array.append("--tx-out-inline-datum-file")
-                inline_datum_array.append(inline_datum_json_file)
-                command_string, index = self.insert_command(
-                    3 + i, 1, command_string, inline_datum_array
-                )
-                i = i + index
+                if self.CARDANO_NETWORK == "testnet":
+                    command_string, index = self.insert_command(
+                        3 + i,
+                        1,
+                        command_string,
+                        ["--testnet-magic", self.CARDANO_NETWORK_MAGIC],
+                    )
+                    i = i + index
+                    command_string, index = self.insert_command(
+                        3 + i, 1, command_string, ["--" + str(self.CARDANO_ERA)]
+                    )
+                else:
+                    command_string, index = self.insert_command(
+                        3 + i, 1, command_string, ["--mainnet"]
+                    )
+                    i = i + index
+                    command_string, index = self.insert_command(
+                        3 + i, 1, command_string, ["--" + str(self.CARDANO_ERA)]
+                    )
 
-            if self.CARDANO_NETWORK == "testnet":
-                command_string, index = self.insert_command(
-                    3 + i,
-                    1,
-                    command_string,
-                    ["--testnet-magic", self.CARDANO_NETWORK_MAGIC],
-                )
-                i = i + index
-                command_string, index = self.insert_command(
-                    3 + i, 1, command_string, ["--" + str(self.CARDANO_ERA)]
-                )
+                self.LOGGER.info(command_string)
+                rawResult = self.execute_command(command_string, None)
+                self.LOGGER.info(rawResult)
+                if "Estimated transaction fee: Lovelace" not in rawResult:
+                    raise TypeError()
             else:
-                command_string, index = self.insert_command(
-                    3 + i, 1, command_string, ["--mainnet"]
-                )
-                i = i + index
-                command_string, index = self.insert_command(
-                    3 + i, 1, command_string, ["--" + str(self.CARDANO_ERA)]
-                )
-
-            self.LOGGER.info(command_string)
-            rawResult = self.execute_command(command_string, None)
-            self.LOGGER.info(rawResult)
-            if "Estimated transaction fee: Lovelace" not in rawResult:
-                raise TypeError()
+                msg = "Not utxos found in the address provided"
+                self.LOGGER.error(msg)
+                rawResult = msg
         else:
             msg = "Not utxos found in the address provided"
             self.LOGGER.error(msg)
