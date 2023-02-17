@@ -332,7 +332,8 @@ class Node(Starter):
             inline_datum_array.append("--tx-out-inline-datum-file")
             inline_datum_array.append(inline_datum_json_file)
 
-        rawResult = self.query_protocol(True)
+        if not os.path.exists(self.TRANSACTION_PATH_FILE + "/protocol.json"):
+            self.query_protocol(True)
         if address_source_check:
             qDestination = 0
             addr_output_array = []
@@ -359,14 +360,14 @@ class Node(Starter):
             # Output part
             address_destin = Destination(address_destin_array)
             if address_destin.adestins != []:
-                tx_out_address, qDestination, asset_output_string = address_destin.string()
+                tx_out_address, qDestination, asset_output_string = address_destin.string(inline_datum_array)
                 assets = ""
                 if action == "send" or action == "burn":
                     assets = asset_output_string
                 source_flag = address_destin.check(address_source, qDestination, assets)
                 if source_flag and action != "burn":
                     addr_output_array = address_destin.add(tx_out_address, qDestination, asset_output_string)
-                    print(addr_output_array) # --tx-out for destin address
+
             # End of output part
             
             # Total lovelace required

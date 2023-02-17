@@ -116,8 +116,11 @@ class Source(Starter):
                 for n, q, p in qToken:
                     coin_name = p + "." + self.string_encode(n)
                     TxHash, amount_equal, utxo_found = self.selection_utxo(self.utxo_tokens, q, coin_name=coin_name)
-                    if utxo_found and ((qLovelace - amount_equal) <= self.change_min_utxo + 500000):
-                        TxHash.extend(self.selection_utxo(self.utxo_lovelace, self.change_min_utxo, coin_name="lovelace")[0])
+                    total = qLovelace + self.change_min_utxo
+                    balance = amount_equal - total
+                    estimated_fee = 500000
+                    if utxo_found and ((balance) <= estimated_fee):
+                        TxHash.extend(self.selection_utxo(self.utxo_lovelace, abs(balance) + estimated_fee, coin_name="lovelace")[0])
             else:
                 TxHash, amount_equal, utxo_found = self.selection_utxo(self.utxo_lovelace, qLovelace, coin_name="lovelace")
             

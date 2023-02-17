@@ -159,7 +159,7 @@ class Starter:
 
         :param str tx_out_address: destination address in bech32 format (addr_....)
         :param str tx_out_tokens: concatenation of tokens to be sent to this address, defaults to ""
-        :param dict **reference_data: with Vasil it is possible to add inline datum or reference scripts
+        :param dict *reference_data: with Vasil it is possible to add inline datum or reference scripts
         most common options for datum:
         - "--tx-out-datum-hash-file", path to file or
         - "--tx-out-datum-hash-value", hash datum value or
@@ -172,7 +172,7 @@ class Starter:
         """
         print("Executing min_required_utxo calculation")
         min_utxo = 0
-        if not os.path.exists(self.TRANSACTION_PATH_FILE + "protocol.json"):
+        if not os.path.exists(self.TRANSACTION_PATH_FILE + "/protocol.json"):
             self.query_protocol(True)
         while True:
             previous_min_utxo = min_utxo
@@ -191,6 +191,7 @@ class Starter:
                     5, 1, command_string, reference_data
                 )
             min_utxo = self.execute_command(command_string, None)
+            print(command_string)
             min_utxo = int(min_utxo.split(" ")[1][:-1])
             if min_utxo == previous_min_utxo:
                 break
@@ -242,7 +243,7 @@ class Starter:
         # Unpacking the results
         token_transactions = []
         for line in rawResult.splitlines():
-            if "lovelace" in line:
+            if "lovelace" in line: # and ("TxOutDatumInline" not in line or "ReferenceTxInsScriptsInlineDatumsInBabbageEra" not in line):
                 transaction = {}
                 trans = line.split()
                 # if only lovelace
@@ -254,6 +255,9 @@ class Starter:
                 tr_amount["amount"] = trans[2]
                 transaction["amounts"].append(tr_amount)
                 # for each token
+                if "TxOutDatumInline" in line:
+                    extended_utxo_index = trans.index("TxOutDatumInline")
+                    trans = trans[:extended_utxo_index-1]
                 for i in range(0, int((len(trans) - 4) / 3)):
                     tr_amount = {}
                     tr_amount["token"] = trans[3 + i * 3 + 3]

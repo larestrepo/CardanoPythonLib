@@ -69,7 +69,7 @@ class Destination(Starter):
             lovelace_check = True
         return asset_check and lovelace_check
     
-    def string(self) -> Tuple[str, int, str]:
+    def string(self, reference_data: list[str]) -> Tuple[str, int, str]:
         tx_out_address = ""
         amount = 0
         asset_output_string = ""
@@ -82,7 +82,7 @@ class Destination(Starter):
                 asset_output = self.tokens(tokens)
                 if asset_output != "":
                     asset_output = "+" + asset_output
-                quantity = self.min_required_utxo(tx_out_address, asset_output)
+                quantity = self.min_required_utxo(tx_out_address, asset_output, *reference_data)
                 if amount < quantity:
                     amount = quantity
                 asset_output_string += asset_output

@@ -10,7 +10,7 @@ class TestLibrary(unittest.TestCase):
         self.config_path = "cardanopythonlib/config/cardano_config.ini"
         self.starter = starter.Starter()
         self.address_origin = (
-            "addr_test1vp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qcul3azr"
+            "addr_test1vrpns5yma4fy2dllhkzpyeur8xes94d903xu7enwuhc4erqecraxf"
         )
 
     #####################################

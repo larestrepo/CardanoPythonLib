@@ -1,5 +1,10 @@
 from cardanopythonlib import base, keys
 
+from log2d import Log 
+
+Log("main")
+Log.main.warning("Danger, Will Robinson!")
+
 # starter = base.Starter()
 # print(starter.CARDANO_CLI_PATH)
 # config_path = "./cardano_config.ini"
@@ -30,7 +35,7 @@ from cardanopythonlib import base, keys
 # print(node.query_protocol())
 
 keys = keys.Keys()
-keys.deriveAllKeys("wallet_name", size = 24, save_flag = False)
+keys.deriveAllKeys("MeshForSuan", size = 24, save_flag = True)
 keys.generate_mnemonic(size= 24)
 
 # # Option 1
@@ -1112,9 +1117,9 @@ params = {
 #     "inline_datum": inline_datum,
 # }
 
-result = node.build_tx_components(params)
-print(result)
+# result = node.build_tx_components(params)
+# print(result)
 
-sign_address_name = "AylluPayment"
-result = node.sign_transaction([sign_address_name])
-result = node.submit_transaction()
+# sign_address_name = "AylluPayment"
+# result = node.sign_transaction([sign_address_name])
+# result = node.submit_transaction()
