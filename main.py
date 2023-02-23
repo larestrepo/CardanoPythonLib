@@ -29,9 +29,9 @@ node.query_tip_exec()
 # print(policyid)
 # print(node.query_protocol())
 
-# keys = keys.Keys()
-# keys.deriveAllKeys("MeshForSuan", size = 24, save_flag = True)
-# keys.generate_mnemonic(size= 24)
+keys = keys.Keys()
+keys.deriveAllKeys("ClientSuan1", size = 24, save_flag = True)
+keys.generate_mnemonic(size= 24)
 
 # # Option 1
 
