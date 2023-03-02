@@ -77,5 +77,4 @@ cardanopythonlib/temps_test.json
 #Cardano
 .priv
 main.py
-docs/poetry_setup.md
 mock_data
