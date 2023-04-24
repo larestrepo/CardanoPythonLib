@@ -29,7 +29,7 @@ class Keys(Starter):
     def generate_mnemonic(self, size: int = 24) -> list[str]:
         """Create mnemonic sentence (list of mnemonic words)
         Input: size number of words: 24 by default"""
-        print("Executing Generate New Mnemonic Phrase")
+        self.LOGGER.info("Executing Generate New Mnemonic Phrase")
         # Generate mnemonic
         command_string = [
             "cardano-address",
@@ -40,7 +40,7 @@ class Keys(Starter):
         ]
         rawResult = self.execute_command(command_string, None)
         mnemonic = rawResult.split()
-        print("Mnemonics are '%s'" % (mnemonic))
+        self.LOGGER.info("Mnemonics are '%s'" % (mnemonic))
         return mnemonic
 
     def deriveRootKey(self, mnemonic: list[str])-> str:
@@ -61,7 +61,7 @@ class Keys(Starter):
         rawResult = self.execute_command(command_string, output.stdout)
 
         # Delete file mnemonic
-        print("Root private key: '%s'" % (rawResult))
+        self.LOGGER.info("Root private key: '%s'" % (rawResult))
         remove_file(self.KEYS_FILE_PATH, "/temp_mnemonic")
         return rawResult
 
@@ -82,7 +82,7 @@ class Keys(Starter):
         command_string = ["cardano-address", "key", "child", "1852H/1815H/0H/2/0"]
         rawResult = self.execute_command(command_string, output.stdout)
 
-        print("Stake extended signing key: '%s'" % (rawResult))
+        self.LOGGER.info("Stake extended signing key: '%s'" % (rawResult))
         # Delete file root key
         remove_file(self.KEYS_FILE_PATH, "/temp_root.xsk")
         return rawResult
@@ -104,7 +104,7 @@ class Keys(Starter):
         command_string = ["cardano-address", "key", "child", "1852H/1815H/0H/0/0"]
         rawResult = self.execute_command(command_string, output.stdout)
 
-        print("Payment extended signing key: '%s'" % (rawResult))
+        self.LOGGER.info("Payment extended signing key: '%s'" % (rawResult))
         # Delete file root key
         remove_file(self.KEYS_FILE_PATH, "/temp_root.xsk")
         return rawResult
@@ -126,7 +126,7 @@ class Keys(Starter):
         command_string = ["cardano-address", "key", "public", "--with-chain-code"]
         rawResult = self.execute_command(command_string, output.stdout)
 
-        print("Payment extended verification key: '%s'" % (rawResult))
+        self.LOGGER.info("Payment extended verification key: '%s'" % (rawResult))
         # Delete file root key
         remove_file(self.KEYS_FILE_PATH, "/temp_payment.xsk")
         return rawResult
@@ -147,7 +147,7 @@ class Keys(Starter):
         # Generate extended public account key xpub
         command_string = ["cardano-address", "key", "public", "--with-chain-code"]
         rawResult = self.execute_command(command_string, output.stdout)
-        print("Stake extended verification key: '%s'" % (rawResult))
+        self.LOGGER.info("Stake extended verification key: '%s'" % (rawResult))
         # Delete file root key
         remove_file(self.KEYS_FILE_PATH, "/temp_stake.xsk")
         return rawResult
@@ -175,7 +175,7 @@ class Keys(Starter):
         ]
         rawResult = self.execute_command(command_string, output.stdout)
 
-        print("Payment extended address: '%s'" % (rawResult))
+        self.LOGGER.info("Payment extended address: '%s'" % (rawResult))
         # Delete file root key
         remove_file(self.KEYS_FILE_PATH, "/temp_payment.xvk")
         return rawResult
@@ -264,7 +264,7 @@ class Keys(Starter):
         output = self.cat_files(self.KEYS_FILE_PATH, "/" + name + "/" + name + ".payment.addr")
         payment_addr = output.communicate()[0].decode("utf-8")
 
-        print(
+        self.LOGGER.info(
             "Payment signing key: '%s' \n Payment verification key: '%s' \n Payment address: '%s"
             % (payment_skey, payment_vkey, payment_addr)
         )
@@ -352,7 +352,7 @@ class Keys(Starter):
         self.execute_command(command_string, None)
         output = self.cat_files(self.KEYS_FILE_PATH, "/" + name + "/" + name + ".stake.addr")
         stake_addr = output.communicate()[0].decode("utf-8")
-        print(
+        self.LOGGER.info(
             "Stake signing key: '%s' \n Stake verification key: '%s' \n Stake address: '%s"
             % (stake_skey, stake_vkey, stake_addr)
         )
@@ -397,7 +397,7 @@ class Keys(Starter):
 
         remove_file(self.KEYS_FILE_PATH, "/temp_payment.vkey")
         remove_file(self.KEYS_FILE_PATH, "/temp_stake.vkey")
-        print("Base address: '%s'" % (base_addr))
+        self.LOGGER.info("Base address: '%s'" % (base_addr))
         return base_addr
 
     def keyHashing(self, name: str)-> str:
@@ -413,7 +413,7 @@ class Keys(Starter):
 
         rawResult = self.execute_command(command_string, None)
         key_hash = str(rawResult.rstrip())
-        print("Key hash of the verification payment key: '%s'" % (key_hash))
+        self.LOGGER.info("Key hash of the verification payment key: '%s'" % (key_hash))
         return key_hash
 
     def deriveAllKeys(self, name: str, size: Union[int, list[str]] = 24, save_flag: bool = True) -> dict:
@@ -489,12 +489,10 @@ class Keys(Starter):
             with open(self.KEYS_FILE_PATH + "/" + name + "/" + name + ".json", "w") as file:
                 json.dump(keys, file, indent=4, ensure_ascii=False)
 
-            print("##################################")
-            print(
+            self.LOGGER.info(
                 "Find all the keys and address details in: %s"
                 % (self.KEYS_FILE_PATH + "/" + name + "/" + name + ".json")
             )
-            print("##################################")
         else:
             remove_folder(self.KEYS_FILE_PATH + "/" + name)
             self.LOGGER.debug(f"Keys info were not saved locally")
@@ -555,5 +553,5 @@ class Keys(Starter):
                 5, 1, command_string, ["--mainnet"]
             )
         rawResult = self.execute_command(command_string, None)
-        print("Script address stored in '%s'" % (keys_file_path))
+        self.LOGGER.info("Script address stored in '%s'" % (keys_file_path))
         return rawResult

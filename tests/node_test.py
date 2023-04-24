@@ -1309,7 +1309,7 @@ class TestLibrary(unittest.TestCase):
             "purpose": self.purpose,
         }
         multisig_script, policyID = self.node.create_simple_script(parameters)
-        script_file_path = script_file_path = self.starter.MINT_FOLDER
+        script_file_path = self.starter.MINT_FOLDER
 
         mint = {
             "action": "mint",

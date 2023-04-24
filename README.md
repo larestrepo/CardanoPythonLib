@@ -29,11 +29,15 @@ The library relies on a cardano_config.ini file which connects to Cardano testne
 
     [node]
     KEYS_FILE_PATH = ./.priv/wallets
+    SCRIPTS_FILE_PATH = ./.priv/scripts
     TRANSACTION_PATH_FILE = ./.priv/transactions
     CARDANO_NETWORK = testnet
-    CARDANO_NETWORK_MAGIC = 1097911063
+    CARDANO_ERA = babbage-era
+    CARDANO_NETWORK_MAGIC = 2
     CARDANO_CLI_PATH = cardano-cli
     URL = http://localhost:8090/v2/wallets/
+    [logger]
+    LEVEL=INFO
 
 When using CARDANO_NETOWRK = mainnet the CARDANO_NETWORK_MAGIC is ignored. 
 

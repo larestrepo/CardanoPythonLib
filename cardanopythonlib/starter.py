@@ -191,7 +191,6 @@ class Starter:
                     5, 1, command_string, reference_data
                 )
             min_utxo = self.execute_command(command_string, None)
-            print(command_string)
             min_utxo = int(min_utxo.split(" ")[1][:-1])
             if min_utxo == previous_min_utxo:
                 break

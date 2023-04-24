@@ -87,7 +87,7 @@ class Node(Starter):
                 3, 1, command_string, ["--mainnet"]
             )
 
-        rawResult = self.execute_command(command_string, None)
+        rawResult = self.execute_command(command_string, None) # TODO: network client mismatch error handle by try catch
         rawResult = json.loads(rawResult)
         self.LOGGER.info(rawResult)
         return rawResult
