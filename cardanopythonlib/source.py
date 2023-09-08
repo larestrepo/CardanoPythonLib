@@ -116,6 +116,10 @@ class Source(Starter):
                 coin_name = ""
                 for n, q, p in qToken:
                     coin_name = p + "." + self.string_encode(n)
+                    if n != "":
+                        coin_name = p + "." + self.string_encode(n)
+                    else:
+                        coin_name = p
                     TxHash, amount_equal, utxo_found = self.selection_utxo(self.utxo_tokens, q, coin_name=coin_name)
                     total = qLovelace + self.change_min_utxo
                     balance = amount_equal - total

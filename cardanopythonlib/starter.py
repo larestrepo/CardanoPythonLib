@@ -328,6 +328,10 @@ class Starter:
                         asset_namef = key.split(".")
                         policyid = asset_namef[0]
                         asset_name = asset_namef[1]
+                        if len(asset_namef) == 2: 
+                            asset_name = asset_namef[1]
+                        else:
+                            asset_name = ""
                         asset_name = bytes.fromhex(asset_name).decode("utf-8")
                         balance_dict[asset_name] = {
                             "policyID": policyid,

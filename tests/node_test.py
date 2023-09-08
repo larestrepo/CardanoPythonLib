@@ -16,9 +16,9 @@ class TestLibrary(unittest.TestCase):
         self.node = base.Node()
         self.wallet_name = "test_wallet"
         self.address_origin = (
-            "addr_test1vp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qcul3azr"
+            "addr_test1vqkge7txl2vdw26efyv7cytjl8l6n8678kz09agc0r34pdss0xtmp"
         )
-        self.source = base.Source("addr_test1vp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qcul3azr")
+        self.source = base.Source("addr_test1vqkge7txl2vdw26efyv7cytjl8l6n8678kz09agc0r34pdss0xtmp")
         self.metadata = {"1337": {"name": "hello world", "completed": 0}}
         self.address_destin_no_tokens = [
             {
@@ -1314,12 +1314,13 @@ class TestLibrary(unittest.TestCase):
         mint = {
             "action": "mint",
             "tokens": [
-                {"name": "Random", "amount": 321, "policyID": policyID},
+                {"name": "", "amount": 1, "policyID": policyID},
             ],
         }
         tx_file_path = self.starter.TRANSACTION_PATH_FILE
         params = {
             "address_origin": self.address_origin,
+            "metadata": self.metadata,
             # "address_destin": self.address_destin_no_tokens,
             "mint": mint,
         }
@@ -1368,7 +1369,7 @@ class TestLibrary(unittest.TestCase):
             ],
         }
         params = {
-            "address_origin": "addr_test1vp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qcul3azr",
+            "address_origin": "addr_test1vqkge7txl2vdw26efyv7cytjl8l6n8678kz09agc0r34pdss0xtmp",
             "mint": mint,
         }
         response = self.node.build_tx_components(params)
@@ -1401,7 +1402,7 @@ class TestLibraryOnline(unittest.TestCase):
         self.node = base.Node()
         self.wallet_name = "test_wallet"
         self.address_origin = (
-            "addr_test1vp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qcul3azr"
+            "addr_test1vqkge7txl2vdw26efyv7cytjl8l6n8678kz09agc0r34pdss0xtmp"
         )
         self.metadata = {"1337": {"name": "hello world", "completed": 0}}
         self.address_destin_no_tokens = [
@@ -1506,7 +1507,7 @@ class TestLibraryOnline(unittest.TestCase):
         }
 
         params = {
-                    "address_origin": "addr_test1vp674jugprun0epvmep395k5hdpt689legmeh05s50kq8qcul3azr",
+                    "address_origin": "addr_test1vqkge7txl2vdw26efyv7cytjl8l6n8678kz09agc0r34pdss0xtmp",
                     "mint": mint,
                 }
         response = self.node.build_tx_components(params)

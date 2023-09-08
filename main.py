@@ -30,7 +30,7 @@ node.query_tip_exec()
 # print(node.query_protocol())
 
 keys = keys.Keys()
-keys.deriveAllKeys("MasterForSuan#", size = 24, save_flag = True)
+keys.deriveAllKeys("LatestInvestment#", size = 24, save_flag = True)
 # keys.generate_mnemonic(size= 24)
 
 # # Option 1
