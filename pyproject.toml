@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cardanopythonlib"
-version = "v1.1"
+version = "v1.2"
 description = "Cardano Python lib to interact with the blockchain"
 authors = ["Moxie <luis.restrepo@ayllu.io>"]
 readme = "README.md"
