@@ -493,9 +493,6 @@ class Keys(Starter):
                 "Find all the keys and address details in: %s"
                 % (self.KEYS_FILE_PATH + "/" + name + "/" + name + ".json")
             )
-        else:
-            remove_folder(self.KEYS_FILE_PATH + "/" + name)
-            self.LOGGER.debug(f"Keys info were not saved locally")
         return keys
 
     def generateCardanoKeys(self, name: str)-> str:

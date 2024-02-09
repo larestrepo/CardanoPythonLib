@@ -224,7 +224,7 @@ class Node(Starter):
         self.LOGGER.info(f"PolicyID is: {policyID}")
         return policyID
 
-    def sign_transaction(self, keys_name: List[str]) -> str:
+    def sign_transaction(self, keys_name: List[str], txDraftName: str, txSignedName: str) -> str:
         """Sign the transaction based on tx_raw file.
          *args: represents the number of declared witness keys required to sign the transaction
         Example: sign_transaction(wallet1, wallet2). Two witnesses, transaction will be signed by wallet1 and wallet2.
@@ -234,9 +234,9 @@ class Node(Starter):
             "transaction",
             "sign",
             "--tx-body-file",
-            self.TRANSACTION_PATH_FILE + "/tx.draft",
+            self.TRANSACTION_PATH_FILE + f"/{txDraftName}",
             "--out-file",
-            self.TRANSACTION_PATH_FILE + "/tx.signed",
+            self.TRANSACTION_PATH_FILE + f"/{txSignedName}",
         ]
         index = 5
         i = 0
@@ -268,7 +268,7 @@ class Node(Starter):
 
         if rawResult == "":
             self.LOGGER.info(
-                f"Sign witness file stored in {self.TRANSACTION_PATH_FILE + '/tx.signed'}"
+                f"Sign witness file stored in {self.TRANSACTION_PATH_FILE} {txSignedName}"
             )
             rawResult = "Transaction signed!!"
         else:

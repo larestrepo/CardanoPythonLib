@@ -4,13 +4,13 @@ from cardanopythonlib import base, keys
 # print(starter.CARDANO_CLI_PATH)
 # config_path = "./cardano_config.ini"
 
-node = base.Node()
+# node = base.Node()
 
 # print(node.get_txid_body())
 
 # print(node.get_tx_info("746975a3a70a1e9832d5b46e46902a436dac24bf48c5d7e0507feeea7e4bea80"))
 
-node.query_tip_exec()
+# node.query_tip_exec()
 
 # print(node.MINT_FOLDER)
 # node.create_simple_script("MyFirstMultiSig","mint", "all", 1, ["80b34df2162e9c4a38ce63322a8f903c9455a0bebd64c02cf1f3222a"])
@@ -30,7 +30,8 @@ node.query_tip_exec()
 # print(node.query_protocol())
 
 keys = keys.Keys()
-keys.deriveAllKeys("LatestInvestment#", size = 24, save_flag = True)
+# size = ["roof","element","alpha","runway","piano","sting","scrap","material","sentence","ankle","neglect","copper","knee","replace","empty","wish","final","tomato","skin","shop","buyer","dash","used","bamboo"]
+keys.deriveAllKeys("MayzFaucetClaim#", size = 24, save_flag = True)
 # keys.generate_mnemonic(size= 24)
 
 # # Option 1
@@ -1091,16 +1092,16 @@ keys.deriveAllKeys("LatestInvestment#", size = 24, save_flag = True)
 # }
 
 
-params = {
-    "address_origin": "addr1vydksv6f6h6rn53updv4w8u2pnsgj9crwkm0v8qwvc8r6wsrlfkfx",
-    "address_destin": [
-        {
-        "address": "addr_test1vqcltfcqz2km3jacfn8dp95ht8e65pzq5q2aavssq5wx3pqg5hhkw",
-        "amount": 9838764076,
-      },
-    ],
-    # "inline_datum": inline_datum,
-}
+# params = {
+#     "address_origin": "addr1vydksv6f6h6rn53updv4w8u2pnsgj9crwkm0v8qwvc8r6wsrlfkfx",
+#     "address_destin": [
+#         {
+#         "address": "addr_test1vqcltfcqz2km3jacfn8dp95ht8e65pzq5q2aavssq5wx3pqg5hhkw",
+#         "amount": 9838764076,
+#       },
+#     ],
+#     # "inline_datum": inline_datum,
+# }
 
 # params = {
 #     "address_origin": address_origin,
@@ -1113,9 +1114,28 @@ params = {
 #     "inline_datum": inline_datum,
 # }
 
-result = node.build_tx_components(params)
+# result = node.build_tx_components(params)
 # print(result)
 
 # sign_address_name = "forPlutus"
 # result = node.sign_transaction([sign_address_name])
 # result = node.submit_transaction()
+
+# node = base.Node()
+# mint = {
+#         "action": "burn",
+#         "tokens": [
+#             {"name": "NatGeoPlantacionesNatGeoPlantaci", "amount": 9, "policyID": "8726ae04e47a9d651336da628998eda52c7b4ab0a4f86deb90e51d83"},
+#         ],
+#     }
+# params = {
+#         "address_origin": "addr_test1qzsd2dw6ewz2edwcyjsv5ld3642syp4frj6m2lwwv2fqh56z3e9ye8g7rv9tp2z39lj6rgfagn975wuu95xahrud5dnsvtl4xj",
+#         "mint": mint,
+#     }
+# response = node.build_tx_components(params)
+
+# key = keys.Keys()
+
+# mnemonic = ["cruise","lady","step","cause","behave","assault","dizzy","mansion","diary","insane","knee","enough","service","voice","domain","violin","kick","easily","neutral","summer","blast","used","cousin","topple"]
+
+# key.deriveAllKeys("scriptWalletSuan#",mnemonic)
