@@ -224,7 +224,7 @@ class Node(Starter):
         self.LOGGER.info(f"PolicyID is: {policyID}")
         return policyID
 
-    def sign_transaction(self, keys_name: List[str], txDraftName: str, txSignedName: str) -> str:
+    def sign_transaction(self, keys_name: List[str], tx_name: str) -> str:
         """Sign the transaction based on tx_raw file.
          *args: represents the number of declared witness keys required to sign the transaction
         Example: sign_transaction(wallet1, wallet2). Two witnesses, transaction will be signed by wallet1 and wallet2.
@@ -234,9 +234,9 @@ class Node(Starter):
             "transaction",
             "sign",
             "--tx-body-file",
-            self.TRANSACTION_PATH_FILE + f"/{txDraftName}",
+            self.TRANSACTION_PATH_FILE + f'/{tx_name}.draft',
             "--out-file",
-            self.TRANSACTION_PATH_FILE + f"/{txSignedName}",
+            self.TRANSACTION_PATH_FILE + f'/{tx_name}.signed',
         ]
         index = 5
         i = 0
@@ -268,7 +268,7 @@ class Node(Starter):
 
         if rawResult == "":
             self.LOGGER.info(
-                f"Sign witness file stored in {self.TRANSACTION_PATH_FILE} {txSignedName}"
+                f"Sign witness file stored in {self.TRANSACTION_PATH_FILE + f'/{tx_name}.signed'}"
             )
             rawResult = "Transaction signed!!"
         else:
@@ -278,14 +278,14 @@ class Node(Starter):
             )
         return rawResult
 
-    def submit_transaction(self):
+    def submit_transaction(self, tx_name: str):
         """Submit the transaction"""
         command_string = [
             self.CARDANO_CLI_PATH,
             "transaction",
             "submit",
             "--tx-file",
-            self.TRANSACTION_PATH_FILE + "/tx.signed",
+            self.TRANSACTION_PATH_FILE + f'/{tx_name}.signed',
         ]
         if self.CARDANO_NETWORK == "testnet":
             command_string, index = self.insert_command(
