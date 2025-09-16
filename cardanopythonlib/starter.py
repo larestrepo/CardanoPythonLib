@@ -238,33 +238,14 @@ class Starter:
             )
 
         rawResult = self.execute_command(command_string, None)
+        if "No UTxOs found" in rawResult:
+            self.LOGGER.info(f"No UTxOs found for address {address}")
+            return {}
+        
+        transactions = json.loads(rawResult)
+        self.LOGGER.info(f"Transactions: {transactions}")
 
-        # Unpacking the results
-        token_transactions = []
-        for line in rawResult.splitlines():
-            if "lovelace" in line: # and ("TxOutDatumInline" not in line or "ReferenceTxInsScriptsInlineDatumsInBabbageEra" not in line):
-                transaction = {}
-                trans = line.split()
-                # if only lovelace
-                transaction["hash"] = trans[0]
-                transaction["id"] = trans[1]
-                transaction["amounts"] = []
-                tr_amount = {}
-                tr_amount["token"] = trans[3]
-                tr_amount["amount"] = trans[2]
-                transaction["amounts"].append(tr_amount)
-                # for each token
-                if "TxOutDatumInline" in line:
-                    extended_utxo_index = trans.index("TxOutDatumInline")
-                    trans = trans[:extended_utxo_index-1]
-                for i in range(0, int((len(trans) - 4) / 3)):
-                    tr_amount = {}
-                    tr_amount["token"] = trans[3 + i * 3 + 3]
-                    tr_amount["amount"] = trans[3 + i * 3 + 2]
-                    transaction["amounts"].append(tr_amount)
-                token_transactions.append(transaction)
-        self.LOGGER.info(f"Transactions: {token_transactions}")
-        return token_transactions
+        return transactions
 
     def id_to_address(self, wallet_name: str) -> str:
         """Get payment address stored locally from wallet_name; if address is
